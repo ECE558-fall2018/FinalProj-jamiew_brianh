@@ -44,8 +44,11 @@ public class PagerActivity extends AppCompatActivity {
         mViewPager.setAdapter(mSectionsPagerAdapter);
 
 
+        // get instance of a "cloud storage bucket"
+        // FirebaseStorage storage = FirebaseStorage.getInstance();
 
-
+        // get instance of the database (see proj3 example for more)
+        // FirebaseDatabase database = FirebaseDatabase.getInstance();
 
 
 
