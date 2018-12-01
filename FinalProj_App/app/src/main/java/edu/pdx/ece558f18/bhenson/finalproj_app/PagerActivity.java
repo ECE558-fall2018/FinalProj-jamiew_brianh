@@ -13,6 +13,8 @@ import android.view.LayoutInflater;
 import android.view.View;
 import android.view.ViewGroup;
 import android.widget.TextView;
+import com.google.firebase.auth.FirebaseAuth;
+import com.google.firebase.auth.FirebaseUser;
 
 public class PagerActivity extends AppCompatActivity {
     public static final String TAG = "SECURITY_Pager:";
@@ -28,6 +30,8 @@ public class PagerActivity extends AppCompatActivity {
     private SectionsPagerAdapter mSectionsPagerAdapter;
 
     private ViewPager mViewPager;
+    private FirebaseAuth mAuth;
+
 
     @Override
     protected void onCreate(Bundle saved) {
@@ -43,9 +47,13 @@ public class PagerActivity extends AppCompatActivity {
         mViewPager = (ViewPager) findViewById(R.id.pager);
         mViewPager.setAdapter(mSectionsPagerAdapter);
 
+        // get instance of the authentication object, hopefully already logged in
+        mAuth = FirebaseAuth.getInstance();
+
 
         // get instance of a "cloud storage bucket"
         // FirebaseStorage storage = FirebaseStorage.getInstance();
+
 
         // get instance of the database (see proj3 example for more)
         // FirebaseDatabase database = FirebaseDatabase.getInstance();
@@ -148,6 +156,10 @@ public class PagerActivity extends AppCompatActivity {
     protected void onStart() {
         super.onStart();
         Log.d(TAG, "onStart()");
+        FirebaseUser currentUser = mAuth.getCurrentUser();
+        if(currentUser == null) {
+            Log.d(TAG, "ERROR: lost the login credentials!");
+        }
     }
     @Override
     protected void onRestart() {
