@@ -13,7 +13,7 @@ import android.view.ViewGroup;
 /**
  * A simple {@link Fragment} subclass.
  * Activities that contain this fragment must implement the
- * {@link SensorListFragment.OnFragmentInteractionListener} interface
+ * {@link SensorListFragmentListener} interface
  * to handle interaction events.
  * Use the {@link SensorListFragment#newInstance} factory method to
  * create an instance of this fragment.
@@ -28,7 +28,7 @@ public class SensorListFragment extends Fragment {
     private String mParam1;
     private String mParam2;
 
-    private OnFragmentInteractionListener mListener;
+    private SensorListFragmentListener mListener;
 
     public SensorListFragment() {
         // Required empty public constructor
@@ -71,18 +71,18 @@ public class SensorListFragment extends Fragment {
     // TODO: Rename method, update argument and hook method into UI event
     public void onButtonPressed(Uri uri) {
         if (mListener != null) {
-            mListener.onFragmentInteraction(uri);
+            //mListener.onFragmentInteraction(uri);
         }
     }
 
     @Override
     public void onAttach(Context context) {
         super.onAttach(context);
-        if (context instanceof OnFragmentInteractionListener) {
-            mListener = (OnFragmentInteractionListener) context;
+        if (context instanceof SensorListFragmentListener) {
+            mListener = (SensorListFragmentListener) context;
         } else {
             throw new RuntimeException(context.toString()
-                    + " must implement OnFragmentInteractionListener");
+                    + " must implement ControlFragmentListener");
         }
     }
 
@@ -102,7 +102,7 @@ public class SensorListFragment extends Fragment {
      * "http://developer.android.com/training/basics/fragments/communicating.html"
      * >Communicating with Other Fragments</a> for more information.
      */
-    public interface OnFragmentInteractionListener {
+    public interface SensorListFragmentListener {
         // TODO: Update argument type and name
         void onFragmentInteraction(Uri uri);
     }

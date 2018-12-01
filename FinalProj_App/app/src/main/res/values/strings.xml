@@ -18,6 +18,13 @@
     <string name="error_field_required">This field is required</string>
     <string name="login_failure">Incorrect username or password</string>
 
+
+
+    <string-array name="page_title_short">
+        <item>Sensor Config</item>
+        <item>Control</item>
+        <item>Camera View</item>
+    </string-array>
     <!-- Strings related to fragment 1: settings -->
     <string name="section_format">Hello World from section: %1$d</string>
 

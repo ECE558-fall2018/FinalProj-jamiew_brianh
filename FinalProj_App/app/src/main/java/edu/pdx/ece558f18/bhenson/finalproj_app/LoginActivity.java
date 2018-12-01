@@ -61,6 +61,7 @@ public class LoginActivity extends AppCompatActivity {
         mAuth = FirebaseAuth.getInstance();
         mDatabase = FirebaseDatabase.getInstance().getReference();
 
+        // TODO: read sharedprefs and determine whether autologin is enabled or not
 
 
         // If a notification message is tapped, any data accompanying the notification
