@@ -30,7 +30,6 @@ public class LoginActivity extends AppCompatActivity {
     private EditText mUsernameBox;
     private EditText mPasswordBox;
 
-    // TODO: anything needed for authentication, if i ever get to it
     private FirebaseAuth mAuth;
     private DatabaseReference mDatabase;
 
@@ -198,7 +197,6 @@ public class LoginActivity extends AppCompatActivity {
                 } else {
                     // If sign in fails, display a message to the user.
                     Log.w(TAG, "signInWithEmail:failure", task.getException());
-                    // TODO: make this in strings.xml
                     Toast.makeText(LoginActivity.this, R.string.login_failure, Toast.LENGTH_SHORT).show();
                 }
 

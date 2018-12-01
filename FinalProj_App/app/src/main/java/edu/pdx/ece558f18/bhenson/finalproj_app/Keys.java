@@ -13,6 +13,11 @@ public class Keys {
     public static final String KEY_USER = PACKAGE + "username";
     public static final String KEY_PASS = PACKAGE + "password";
 
+    /**
+     * Simply subtracts the email suffix from the end to get the username back
+     * @param email foobar@pdx.edu as returned by the FirebaseUser object
+     * @return foobar, what the user actually enters at the login screen
+     */
     public static String stripEmailSuffix(String email) {
         return email.substring(0, email.length() - EMAIL_SUFFIX.length());
     }

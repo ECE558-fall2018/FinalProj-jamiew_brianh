@@ -117,7 +117,6 @@ public class PagerActivity extends AppCompatActivity {
         }
 
         @Override public CharSequence getPageTitle(int position) {
-            // TODO: figure out how to get this to display better (more padding)
             return "This Is A Title";
             //return Integer.toString(position);
         }
