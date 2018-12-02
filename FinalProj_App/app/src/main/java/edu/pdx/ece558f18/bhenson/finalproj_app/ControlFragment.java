@@ -2,7 +2,6 @@ package edu.pdx.ece558f18.bhenson.finalproj_app;
 
 import android.content.Context;
 import android.content.SharedPreferences;
-import android.net.Uri;
 import android.os.Bundle;
 import android.support.annotation.NonNull;
 import android.support.v4.app.Fragment;
@@ -164,14 +163,6 @@ public class ControlFragment extends Fragment {
     };
 
 
-
-
-    // TODO: Rename method, update argument and hook method into UI event
-    public void onButtonPressed(Uri uri) {
-        if (mListener != null) {
-            //mListener.onFragmentInteraction(uri);
-        }
-    }
 
 
 

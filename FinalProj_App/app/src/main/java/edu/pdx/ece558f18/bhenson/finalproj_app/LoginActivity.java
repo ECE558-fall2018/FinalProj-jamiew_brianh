@@ -44,7 +44,6 @@ public class LoginActivity extends AppCompatActivity {
         mSubmitButton = (Button) findViewById(R.id.login_submit_button);
         mUsernameBox = (EditText) findViewById(R.id.usernamebox);
         mPasswordBox = (EditText) findViewById(R.id.passwordbox);
-        // TODO: something with the progressbar? or just delete it?
 
         // 2: attach button listeners
         // attach a listener to the login button that launches the pager activity, or just jump to it immediately?
@@ -61,7 +60,6 @@ public class LoginActivity extends AppCompatActivity {
         mAuth = FirebaseAuth.getInstance();
         mDatabase = FirebaseDatabase.getInstance().getReference();
 
-        // TODO: read sharedprefs and determine whether autologin is enabled or not
 
 
         // If a notification message is tapped, any data accompanying the notification
