@@ -40,6 +40,12 @@
 
 
     <!-- Strings related to fragment 3: camera -->
+    <string name="blind_people_text">security camera image</string>
+    <string name="manual_capture_label">Capture &amp; Download Image</string>
+    <string name="save_image_label">Save to Local</string>
+    <string name="download_hires_label">Download Hires Image</string>
+    <string name="begin_voip_label">Begin VOIP Call</string>
+    <string name="end_voip_label">End VOIP Call</string>
 
 
 </resources>
