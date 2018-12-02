@@ -10,6 +10,7 @@ import android.util.Log;
 import android.view.View;
 import android.widget.Button;
 import android.widget.EditText;
+import android.widget.ProgressBar;
 import android.widget.Toast;
 import com.google.android.gms.tasks.OnCompleteListener;
 import com.google.android.gms.tasks.Task;
@@ -22,12 +23,12 @@ import com.google.firebase.iid.InstanceIdResult;
 
 public class LoginActivity extends AppCompatActivity {
     public static final String TAG = "SEC_LoginActivity";
-    public static final boolean AUTOLOGIN = false;
 
     // references to relevant UI elements
     private Button mSubmitButton;
     private EditText mUsernameBox;
     private EditText mPasswordBox;
+    private ProgressBar mProgressBar;
 
     private FirebaseAuth mAuth;
     private DatabaseReference mDatabase;
@@ -43,6 +44,7 @@ public class LoginActivity extends AppCompatActivity {
         mSubmitButton = (Button) findViewById(R.id.login_submit_button);
         mUsernameBox = (EditText) findViewById(R.id.usernamebox);
         mPasswordBox = (EditText) findViewById(R.id.passwordbox);
+        mProgressBar = (ProgressBar) findViewById(R.id.login_progress);
 
         // 2: attach button listeners
         // attach a listener to the login button that launches the pager activity, or just jump to it immediately?
@@ -149,16 +151,18 @@ public class LoginActivity extends AppCompatActivity {
         }
 
         Log.d(TAG, "signing in with email=" + email + ", pass=" + pass);
-
         // disable the UI elements for the moment it takes to check the credentials
         mSubmitButton.setEnabled(false);
         mUsernameBox.setEnabled(false);
         mPasswordBox.setEnabled(false);
+        mProgressBar.setVisibility(View.VISIBLE);
+        mProgressBar.setProgress(25);
 
         // actually perform the credential check
         mAuth.signInWithEmailAndPassword(email, pass).addOnCompleteListener(this, new OnCompleteListener<AuthResult>() {
             @Override public void onComplete(@NonNull Task<AuthResult> task) {
                 if (task.isSuccessful()) {
+                    mProgressBar.setProgress(50);
                     // Sign in success, update UI with the signed-in user's information
                     Log.d(TAG, "signInWithEmail:success");
                     Log.d(TAG, "UUID = " + mAuth.getCurrentUser().getUid());
@@ -182,6 +186,7 @@ public class LoginActivity extends AppCompatActivity {
                 mSubmitButton.setEnabled(true);
                 mUsernameBox.setEnabled(true);
                 mPasswordBox.setEnabled(true);
+                mProgressBar.setVisibility(View.INVISIBLE);
             }
         });
     }
@@ -189,9 +194,11 @@ public class LoginActivity extends AppCompatActivity {
 
     private ValueEventListener verifyNodeExists = new ValueEventListener() {
         @Override public void onDataChange(@NonNull DataSnapshot ds) {
+            mProgressBar.setProgress(75);
             // verify that the node exists... if it doesn't exist, then create default fields for everything it will need!
             // if the 'email' field is null then assume the whole thing is missing
             if(ds.child("email").getValue() == null) {
+                Log.d(TAG, "creating default database structures");
                 // create the node with default values
                 DatabaseReference userNode = mDatabase.child("users").child(mAuth.getCurrentUser().getUid());
                 // dont need to create email or apptoken, those created below
@@ -200,6 +207,7 @@ public class LoginActivity extends AppCompatActivity {
                 // TODO: replace these with constants in Keys file
                 userNode.child("pi_timestamp").setValue("err");
                 userNode.child("pi_armed").setValue(false);
+                userNode.child("pi_triggered").setValue(false);
                 userNode.child("pi_connected").setValue(false);
                 userNode.child("timeout_threshold").setValue(10);
                 userNode.child("control").child("toggle_pi_armed").setValue(false);
@@ -221,6 +229,12 @@ public class LoginActivity extends AppCompatActivity {
             // once I have logged in and know my UUID then I should try to send the MessagingService token to the database
             // manually get the token
             FirebaseInstanceId.getInstance().getInstanceId().addOnCompleteListener(afterGetToken);
+            // re-enable these elements
+            mSubmitButton.setEnabled(true);
+            mUsernameBox.setEnabled(true);
+            mPasswordBox.setEnabled(true);
+            mProgressBar.setVisibility(View.INVISIBLE);
+
         }
         @Override public void onCancelled(@NonNull DatabaseError de) {
             // Failed to read value, not sure how or what to do about it
@@ -234,7 +248,7 @@ public class LoginActivity extends AppCompatActivity {
                 Log.w(TAG, "getInstanceId failed", task.getException());
                 return;
             }
-
+            mProgressBar.setProgress(100);
             // Get the Instance ID token
             String token = task.getResult().getToken();
             Log.d(TAG, "token= " + token);
