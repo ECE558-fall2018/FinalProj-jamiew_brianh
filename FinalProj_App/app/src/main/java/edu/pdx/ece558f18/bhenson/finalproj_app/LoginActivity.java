@@ -16,8 +16,7 @@ import com.google.android.gms.tasks.Task;
 import com.google.firebase.auth.AuthResult;
 import com.google.firebase.auth.FirebaseAuth;
 import com.google.firebase.auth.FirebaseUser;
-import com.google.firebase.database.DatabaseReference;
-import com.google.firebase.database.FirebaseDatabase;
+import com.google.firebase.database.*;
 import com.google.firebase.iid.FirebaseInstanceId;
 import com.google.firebase.iid.InstanceIdResult;
 
@@ -170,31 +169,9 @@ public class LoginActivity extends AppCompatActivity {
                     e.putString(Keys.KEY_PASS, pass_f);
                     e.putString(Keys.KEY_USER, username_f);
                     e.apply();
-                    // once I have logged in and know my UUID then I should try to send the MessagingService token to the database
-                    // manually get the token
-                    FirebaseInstanceId.getInstance().getInstanceId().addOnCompleteListener(new OnCompleteListener<InstanceIdResult>() {
-                        @Override public void onComplete(@NonNull Task<InstanceIdResult> task) {
-                            if (!task.isSuccessful()) {
-                                Log.w(TAG, "getInstanceId failed", task.getException());
-                                return;
-                            }
 
-                            // Get the Instance ID token
-                            String token = task.getResult().getToken();
-                            Log.d(TAG, "token= " + token);
-
-                            // store the token in the database, at the path "users/<uuid>/apptoken"
-                            DatabaseReference temp1 = mDatabase.child("users");
-                            DatabaseReference temp2 = temp1.child(mAuth.getCurrentUser().getUid());
-                            DatabaseReference temp3 = temp2.child("apptoken");
-                            temp3.setValue(token);
-                            DatabaseReference temp4 = temp2.child("email");
-                            temp4.setValue(mAuth.getCurrentUser().getEmail());
-
-                            // NOW i'm finally done and ready to move on
-                            proceedToApp();
-                        }
-                    });
+                    DatabaseReference userNode = mDatabase.child("users").child(mAuth.getCurrentUser().getUid());
+                    userNode.addListenerForSingleValueEvent(verifyNodeExists);
                 } else {
                     // If sign in fails, display a message to the user.
                     Log.w(TAG, "signInWithEmail:failure", task.getException());
@@ -210,6 +187,70 @@ public class LoginActivity extends AppCompatActivity {
     }
 
 
+    private ValueEventListener verifyNodeExists = new ValueEventListener() {
+        @Override public void onDataChange(@NonNull DataSnapshot ds) {
+            // verify that the node exists... if it doesn't exist, then create default fields for everything it will need!
+            // if the 'email' field is null then assume the whole thing is missing
+            if(ds.child("email").getValue() == null) {
+                // create the node with default values
+                DatabaseReference userNode = mDatabase.child("users").child(mAuth.getCurrentUser().getUid());
+                // dont need to create email or apptoken, those created below
+                //userNode.child("email");
+                //userNode.child("apptoken");
+                // TODO: replace these with constants in Keys file
+                userNode.child("pi_timestamp").setValue("err");
+                userNode.child("pi_armed").setValue(false);
+                userNode.child("pi_connected").setValue(false);
+                userNode.child("timeout_threshold").setValue(10);
+                userNode.child("control").child("toggle_pi_armed").setValue(false);
+                userNode.child("camera").child("photo_pipeline_state").setValue(0);
+                // TODO: decide how sound communication is structured
+                userNode.child("sound").child("done_uploading_new").setValue(false);
+                userNode.child("sound").child("done_downloading_new").setValue(false);
+                // TODO: decide how voip is structured, and if using it
+                userNode.child("voip").child("app_addr").setValue("err");
+                userNode.child("voip").child("app_username").setValue(false);
+                userNode.child("voip").child("app_password").setValue(false);
+                userNode.child("voip").child("pi_addr").setValue("err");
+                userNode.child("voip").child("pi_username").setValue(false);
+                userNode.child("voip").child("pi_password").setValue(false);
+                // TODO: create empty sensor config object here
+                userNode.child("sensor_config").child("sensor_config_obj").setValue("???");
+            }
+
+            // once I have logged in and know my UUID then I should try to send the MessagingService token to the database
+            // manually get the token
+            FirebaseInstanceId.getInstance().getInstanceId().addOnCompleteListener(afterGetToken);
+        }
+        @Override public void onCancelled(@NonNull DatabaseError de) {
+            // Failed to read value, not sure how or what to do about it
+            Log.d(TAG, "firebase error: failed to get snapshot??", de.toException());
+        }
+    };
+
+    private OnCompleteListener<InstanceIdResult> afterGetToken = new OnCompleteListener<InstanceIdResult>() {
+        @Override public void onComplete(@NonNull Task<InstanceIdResult> task) {
+            if (!task.isSuccessful()) {
+                Log.w(TAG, "getInstanceId failed", task.getException());
+                return;
+            }
+
+            // Get the Instance ID token
+            String token = task.getResult().getToken();
+            Log.d(TAG, "token= " + token);
+
+            // store the token in the database, at the path "users/<uuid>/apptoken"
+            DatabaseReference userNode = mDatabase.child("users").child(mAuth.getCurrentUser().getUid());
+            DatabaseReference temp3 = userNode.child("apptoken");
+            temp3.setValue(token);
+            DatabaseReference temp4 = userNode.child("email");
+            temp4.setValue(mAuth.getCurrentUser().getEmail());
+
+            // NOW i'm finally done and ready to move on
+            proceedToApp();
+        }
+
+    };
 
 
     // ===========================================================================================================
