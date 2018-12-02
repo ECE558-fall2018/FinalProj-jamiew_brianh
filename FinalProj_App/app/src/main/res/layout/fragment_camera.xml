@@ -8,10 +8,11 @@
     <LinearLayout
             android:orientation="vertical"
             android:layout_width="match_parent"
-            android:layout_height="match_parent">
+            android:layout_height="match_parent"
+            android:layout_margin="15dp">
         <ImageView
-                android:src="@drawable/googleg_standard_color_18"
-                android:layout_width="match_parent"
+                android:src="@drawable/no_image_640x480"
+                android:layout_width="wrap_content"
                 android:layout_height="wrap_content"
                 android:id="@+id/imageView"/>
         <Button
