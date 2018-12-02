@@ -6,25 +6,11 @@
              tools:context=".ControlFragment">
 
     <LinearLayout
-            android:orientation="vertical"
             android:layout_width="match_parent"
             android:layout_height="match_parent"
             android:gravity="center_vertical"
-            android:layout_margin="20dp">
-        <Switch
-                android:layout_width="match_parent"
-                android:layout_height="wrap_content"
-                android:id="@+id/switch1"
-                android:scaleX="1"
-                android:scaleY="1"
-                android:gravity="center"
-                android:textOn="ARMED"
-                android:textOff="DISARMED"
-                android:showText="true"
-                android:checked="false"
-                tools:checked="false"
-                android:splitTrack="false"
-                android:text="Arm/Disarm"/>
+            android:layout_margin="20dp"
+            android:orientation="vertical">
         <TextView
                 android:layout_width="match_parent"
                 android:layout_height="wrap_content"
@@ -33,27 +19,68 @@
                 android:text="Button"
                 android:layout_width="match_parent"
                 android:layout_height="wrap_content"
-                android:id="@+id/button2"/>
-        <TextView
-                android:text="TextView"
+                android:id="@+id/button2"
+        />
+        <Space
+                android:layout_width="match_parent"
+                android:layout_height="100dp"/>
+        <Switch
                 android:layout_width="match_parent"
                 android:layout_height="wrap_content"
-                android:id="@+id/textView"/>
-        <Button
-                android:text="Button"
+                android:id="@+id/switch_armtoggle"
+                android:scaleX="1"
+                android:scaleY="1"
+                android:gravity="center"
+                android:textOn="@string/armtoggle_armed"
+                android:textOff="@string/armtoggle_disarmed"
+                android:showText="true"
+                android:checked="false"
+                tools:checked="false"
+                android:splitTrack="false"
+                android:text="@string/armtoggle_label"/>
+        <CheckBox
+                android:text="@string/autologin_label"
                 android:layout_width="match_parent"
                 android:layout_height="wrap_content"
-                android:id="@+id/button3"/>
-        <TextView
-                android:text="TextView"
+                android:id="@+id/cb_autologin"
+        />
+        <LinearLayout
+                android:orientation="horizontal"
                 android:layout_width="match_parent"
                 android:layout_height="wrap_content"
-                android:id="@+id/textView2"/>
-        <Button
-                android:text="Button"
+                android:gravity="center_vertical">
+            <TextView
+                    android:text="@string/timeout_threshold_label"
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:id="@+id/tv_timeout"
+                    android:layout_weight="1"
+                    android:singleLine="false"
+                    android:gravity="center_vertical"/>
+            <NumberPicker android:layout_width="match_parent"
+                          android:layout_height="120dp"
+                          android:id="@+id/picker_timeout"
+                          android:layout_weight="1"/>
+        </LinearLayout>
+        <LinearLayout
+                android:orientation="horizontal"
                 android:layout_width="match_parent"
-                android:layout_height="wrap_content"
-                android:id="@+id/button6"/>
+                android:layout_height="wrap_content">
+            <TextView
+                    android:text="@string/error"
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content"
+                    android:id="@+id/tv_whoami"
+                    android:layout_weight="1"
+                    android:gravity="left|center_vertical"/>
+            <Button
+                    android:text="@string/logout_button_label"
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content"
+                    android:id="@+id/butt_logout"
+                    android:layout_weight="1"
+            />
+        </LinearLayout>
     </LinearLayout>
 
 </FrameLayout>

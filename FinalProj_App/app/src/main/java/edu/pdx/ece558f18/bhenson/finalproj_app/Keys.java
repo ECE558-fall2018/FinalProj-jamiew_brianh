@@ -12,6 +12,13 @@ public class Keys {
     public static final String EMAIL_SUFFIX = "@pdx.edu";
     public static final String KEY_USER = PACKAGE + "username";
     public static final String KEY_PASS = PACKAGE + "password";
+    public static final String KEY_AUTOLOGIN = PACKAGE + "autologin";
+
+
+
+
+    public static final Boolean DEFAULT_AUTOLOGIN = true;
+
 
     /**
      * Simply subtracts the email suffix from the end to get the username back

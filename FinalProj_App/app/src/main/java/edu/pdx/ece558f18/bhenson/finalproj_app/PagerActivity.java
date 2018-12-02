@@ -18,7 +18,7 @@ public class PagerActivity extends AppCompatActivity
                     CameraFragment.CameraFragmentListener,
                     SensorListFragment.SensorListFragmentListener {
 
-    public static final String TAG = "SECURITY_Pager:";
+    public static final String TAG = "SEC_PagerActivity";
 
     /**
      * The {@link android.support.v4.view.PagerAdapter} that will provide
@@ -47,6 +47,7 @@ public class PagerActivity extends AppCompatActivity
         // Set up the ViewPager with the sections adapter.
         mViewPager = (ViewPager) findViewById(R.id.pager);
         mViewPager.setAdapter(mSectionsPagerAdapter);
+        mViewPager.setCurrentItem(1, false);
 
         // get instance of the authentication object, hopefully already logged in
         mAuth = FirebaseAuth.getInstance();
@@ -71,7 +72,7 @@ public class PagerActivity extends AppCompatActivity
     }
 
     @Override
-    public void redoLogin() {
+    public void returnToLogin() {
         // this does only what must be done at the activity level, the ControlFragment does more stuff before calling this
         // this simply kills the pageractivity and launches the login activity
         Intent next = new Intent(PagerActivity.this, LoginActivity.class);

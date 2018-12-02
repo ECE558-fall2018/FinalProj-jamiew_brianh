@@ -22,7 +22,7 @@ import com.google.firebase.iid.FirebaseInstanceId;
 import com.google.firebase.iid.InstanceIdResult;
 
 public class LoginActivity extends AppCompatActivity {
-    public static final String TAG = "SECURITY_Login:";
+    public static final String TAG = "SEC_LoginActivity";
     public static final boolean AUTOLOGIN = false;
 
     // references to relevant UI elements
@@ -237,8 +237,9 @@ public class LoginActivity extends AppCompatActivity {
     protected void onStart() {
         super.onStart();
         Log.d(TAG, "onStart()");
-        // TODO: make autologin a user-configurable option?
-        if(AUTOLOGIN) {
+        SharedPreferences prefs = getSharedPreferences(Keys.FILE_PREFS, Context.MODE_PRIVATE);
+        boolean autologin = prefs.getBoolean(Keys.KEY_AUTOLOGIN, Keys.DEFAULT_AUTOLOGIN);
+        if(autologin) {
             FirebaseUser currentUser = mAuth.getCurrentUser();
             if (currentUser != null) {
                 // somehow already logged in, not sure how but I'll accept it!
@@ -247,7 +248,6 @@ public class LoginActivity extends AppCompatActivity {
                 return;
             }
             // if not still logged in, check the shared preferences
-            SharedPreferences prefs = getSharedPreferences(Keys.FILE_PREFS, Context.MODE_PRIVATE);
             String muser = prefs.getString(Keys.KEY_USER, null);
             String mpass = prefs.getString(Keys.KEY_PASS, null);
             // if I managed to find some sharedPrefs user and password, then attempt login with those!
