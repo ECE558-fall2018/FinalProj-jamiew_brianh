@@ -92,8 +92,6 @@ public class ControlFragment extends Fragment {
         mCheckBox = (CheckBox) v.findViewById(R.id.cb_autologin);
         mLogout = (Button) v.findViewById(R.id.butt_logout);
         mToggle = (Switch) v.findViewById(R.id.switch_armtoggle);
-        mToggle.requestFocus();
-
 
         // initialize all UI elements that need it
         // whoami text
@@ -101,6 +99,7 @@ public class ControlFragment extends Fragment {
 
         // numberpicker
         // TODO: numberpicker is really hard to work with (how do i reverse the order? how do I resize the center bit????) so consider replacing with a spinner or direct input
+        // TODO: specify the values that are displayd (1/2/3/5/10/15/20, perhaps?)
         mNumberPicker.setMaxValue(100);
         mNumberPicker.setMinValue(0);
         mNumberPicker.setWrapSelectorWheel(false);
@@ -124,6 +123,9 @@ public class ControlFragment extends Fragment {
         // arm/disarm
         // timout select
 
+        mLogout.requestFocus();
+        // note: it looks dumb when the NumberPicker has focus as the fragment launches, so either somehow unfocus it or focus on something else
+        // note: it's not totally consistient tho, the NumberPicker keeps grabbing focus
 
 
 

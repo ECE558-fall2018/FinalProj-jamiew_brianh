@@ -188,6 +188,8 @@ public class LoginActivity extends AppCompatActivity {
                             DatabaseReference temp2 = temp1.child(mAuth.getCurrentUser().getUid());
                             DatabaseReference temp3 = temp2.child("apptoken");
                             temp3.setValue(token);
+                            DatabaseReference temp4 = temp2.child("email");
+                            temp4.setValue(mAuth.getCurrentUser().getEmail());
 
                             // NOW i'm finally done and ready to move on
                             proceedToApp();
