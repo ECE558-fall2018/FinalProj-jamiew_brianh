@@ -13,6 +13,7 @@ public class Keys {
     public static final String KEY_USER = PACKAGE + "username";
     public static final String KEY_PASS = PACKAGE + "password";
     public static final String KEY_AUTOLOGIN = PACKAGE + "autologin";
+    public static final String KEY_ISCONNECTED = PACKAGE + "isconnected";
 
 
 

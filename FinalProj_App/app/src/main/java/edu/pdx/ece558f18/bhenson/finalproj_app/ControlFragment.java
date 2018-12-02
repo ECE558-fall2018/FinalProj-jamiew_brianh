@@ -24,15 +24,6 @@ import com.google.firebase.database.FirebaseDatabase;
  * create an instance of this fragment.
  */
 public class ControlFragment extends Fragment {
-    // TODO: Rename parameter arguments, choose names that match
-    // the fragment initialization parameters, e.g. ARG_ITEM_NUMBER
-    private static final String ARG_PARAM1 = "param1";
-    private static final String ARG_PARAM2 = "param2";
-    // TODO: Rename and change types of parameters
-    private String mParam1;
-    private String mParam2;
-
-
     public static final String TAG = "SEC_ControlFragment";
     private ControlFragmentListener mListener;
     private FirebaseAuth mAuth;
@@ -42,6 +33,7 @@ public class ControlFragment extends Fragment {
     private Button mLogout;
     private Switch mToggle;
 
+    private boolean mIsConnected;
 
     public ControlFragment() {
         // Required empty public constructor
@@ -51,16 +43,13 @@ public class ControlFragment extends Fragment {
      * Use this factory method to create a new instance of
      * this fragment using the provided parameters.
      *
-     * @param param1 Parameter 1.
-     * @param param2 Parameter 2.
      * @return A new instance of fragment ControlFragment.
      */
-    // TODO: Rename and change types and number of parameters
-    public static ControlFragment newInstance(String param1, String param2) {
+    public static ControlFragment newInstance(boolean piIsConnected) {
         ControlFragment fragment = new ControlFragment();
         Bundle args = new Bundle();
-        args.putString(ARG_PARAM1, param1);
-        args.putString(ARG_PARAM2, param2);
+
+        args.putBoolean(Keys.KEY_ISCONNECTED, piIsConnected);
         fragment.setArguments(args);
         return fragment;
     }
@@ -70,9 +59,9 @@ public class ControlFragment extends Fragment {
         super.onCreate(saved);
         Log.d(TAG, "onCreate(bundle)");
         if (getArguments() != null) {
-            mParam1 = getArguments().getString(ARG_PARAM1);
-            mParam2 = getArguments().getString(ARG_PARAM2);
+            mIsConnected = getArguments().getBoolean(Keys.KEY_ISCONNECTED);
         }
+
         mAuth = FirebaseAuth.getInstance();
         if(mAuth.getCurrentUser() == null) {
             Log.d(TAG, "somehow lost login credentials!");
@@ -128,11 +117,14 @@ public class ControlFragment extends Fragment {
         // note: it's not totally consistient tho, the NumberPicker keeps grabbing focus
 
 
-
+        setPiConnection(mIsConnected);
         return v;
     }
 
-
+    // sets the buttons and whatnot to be enabled/disabled as appropriate
+    public void setPiConnection(boolean b) {
+        // TODO
+    }
 
 
     View.OnClickListener logoutButtonListener = new View.OnClickListener() {
