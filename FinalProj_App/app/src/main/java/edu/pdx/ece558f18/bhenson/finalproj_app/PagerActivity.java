@@ -114,7 +114,7 @@ public class PagerActivity extends AppCompatActivity
 
     @Override
     public void onFragmentInteraction(Uri uri) {
-
+        // stub
     }
 
     @Override

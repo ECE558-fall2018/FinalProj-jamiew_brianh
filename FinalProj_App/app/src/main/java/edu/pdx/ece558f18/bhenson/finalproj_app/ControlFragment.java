@@ -244,7 +244,6 @@ public class ControlFragment extends Fragment {
         Log.d(TAG, "onDetatch()");
 
     }
-
     @Override
     public void onStart() {
         super.onStart();
