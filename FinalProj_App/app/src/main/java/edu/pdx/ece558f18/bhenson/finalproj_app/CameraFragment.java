@@ -499,7 +499,7 @@ public class CameraFragment extends Fragment {
      * >Communicating with Other Fragments</a> for more information.
      */
     public interface CameraFragmentListener {
-        // TODO: Update argument type and name
+        // TODO: Update argument type and name for VOIP callbacks
         void onFragmentInteraction(Uri uri);
         void onRequestPermissionsResult(int requestCode, String permissions[], int[] grantResults);
     }

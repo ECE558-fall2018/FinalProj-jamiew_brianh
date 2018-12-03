@@ -43,7 +43,7 @@ public class MyFirebaseMessagingService extends FirebaseMessagingService {
         // Also if you intend on generating your own notifications as a result of a received FCM
         // message, here is where that should be initiated. See sendNotification method below.
         // TODO: generate a toast if the message is received while the app is open?
-        // TODO: find a way to affect the app UI when this function triggers???
+        // NOTE: to affect the app UI while the app is running, just send data thru the Database
     }
 
 
@@ -51,7 +51,7 @@ public class MyFirebaseMessagingService extends FirebaseMessagingService {
     public void onDeletedMessages() {
         super.onDeletedMessages();
         Log.d(TAG,"deleted something");
-        // TODO?
+        // TODO? i'm supposed to implement this but i really dont think it's needed
     }
 
     /**
