@@ -2,6 +2,7 @@ package edu.pdx.ece558f18.bhenson.finalproj_app;
 
 import android.content.Context;
 import android.content.Intent;
+import android.content.SharedPreferences;
 import android.content.pm.PackageManager;
 import android.net.Uri;
 import android.os.Bundle;
@@ -59,8 +60,8 @@ public class PagerActivity extends AppCompatActivity
         mAuth = FirebaseAuth.getInstance();
 
         // get instance of the database (see proj3 example for more)
-        mMyDatabase = FirebaseDatabase.getInstance().getReference().child("users").child(mAuth.getCurrentUser().getUid());
-        mMyDatabase.child("pi_connected").addValueEventListener(mDisconnectListener);
+        mMyDatabase = FirebaseDatabase.getInstance().getReference().child(Keys.DB_TOPFOLDER).child(mAuth.getCurrentUser().getUid());
+        mMyDatabase.child(Keys.DB_CONNECTED).addValueEventListener(mDisconnectListener);
 
 
 
@@ -80,7 +81,7 @@ public class PagerActivity extends AppCompatActivity
         @Override public void onDataChange(@NonNull DataSnapshot ds) {
             boolean b;
             try {
-                b = (Boolean) ds.getValue();
+                b = ds.getValue(Boolean.class);
             } catch (NullPointerException npe) {
                 Log.d(TAG, "error: field doesnt exist or has bad data, " + ds.toString(), npe);
                 return;
@@ -145,7 +146,17 @@ public class PagerActivity extends AppCompatActivity
 
     @Override
     public void returnToLogin() {
-        // this does only what must be done at the activity level, the ControlFragment does more stuff before calling this
+        // this does the whole logout operation
+
+        // sign out from firebase
+        mAuth.signOut();
+        // erase stored username and password from sharedprefs
+        SharedPreferences prefs = getSharedPreferences(Keys.FILE_PREFS, Context.MODE_PRIVATE);
+        SharedPreferences.Editor e = prefs.edit();
+        e.remove(Keys.KEY_USER);
+        e.remove(Keys.KEY_PASS);
+        e.commit(); // wiser to commit it immediately instead of whenver it feels like it
+
         // this simply kills the pageractivity and launches the login activity
         Intent next = new Intent(PagerActivity.this, LoginActivity.class);
         // add some extras?
@@ -172,7 +183,7 @@ public class PagerActivity extends AppCompatActivity
         public SectionsPagerAdapter(FragmentManager fm, Context c) {
             super(fm);
             // context is used to get resources from the activity, i guess?
-            page_titles_short = getResources().getStringArray(R.array.page_title_short);
+            page_titles_short = c.getResources().getStringArray(R.array.page_title_short);
 
 
 

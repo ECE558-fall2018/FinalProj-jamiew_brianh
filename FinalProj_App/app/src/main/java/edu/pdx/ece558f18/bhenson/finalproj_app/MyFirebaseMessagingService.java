@@ -3,14 +3,11 @@ package edu.pdx.ece558f18.bhenson.finalproj_app;
 import android.app.NotificationChannel;
 import android.app.NotificationManager;
 import android.app.PendingIntent;
-import android.app.Service;
 import android.content.Context;
 import android.content.Intent;
 import android.media.RingtoneManager;
 import android.net.Uri;
 import android.os.Build;
-import android.os.Handler;
-import android.os.IBinder;
 import android.support.v4.app.NotificationCompat;
 import android.util.Log;
 import com.google.firebase.auth.FirebaseAuth;
@@ -80,9 +77,9 @@ public class MyFirebaseMessagingService extends FirebaseMessagingService {
         DatabaseReference mDatabase = FirebaseDatabase.getInstance().getReference();
         FirebaseUser user = FirebaseAuth.getInstance().getCurrentUser();
         if(user != null) {
-            DatabaseReference temp1 = mDatabase.child("users");
+            DatabaseReference temp1 = mDatabase.child(Keys.DB_TOPFOLDER);
             DatabaseReference temp2 = temp1.child(user.getUid());
-            DatabaseReference temp3 = temp2.child("apptoken");
+            DatabaseReference temp3 = temp2.child(Keys.DB_APPTOKEN);
             temp3.setValue(token);
             Log.d(TAG, "successfully sent new token to the database");
         }

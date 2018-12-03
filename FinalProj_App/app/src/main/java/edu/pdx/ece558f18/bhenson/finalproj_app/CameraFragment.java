@@ -89,8 +89,8 @@ public class CameraFragment extends Fragment {
         if(mAuth.getCurrentUser() == null) {
             Log.d(TAG, "somehow lost login credentials!");
         }
-        mMyDatabase = FirebaseDatabase.getInstance().getReference().child("users").child(mAuth.getCurrentUser().getUid());
-        mMyImages = FirebaseStorage.getInstance().getReference().child("users").child(mAuth.getCurrentUser().getUid());
+        mMyDatabase = FirebaseDatabase.getInstance().getReference().child(Keys.DB_TOPFOLDER).child(mAuth.getCurrentUser().getUid());
+        mMyImages = FirebaseStorage.getInstance().getReference().child(Keys.STORAGE_TOPFOLDER).child(mAuth.getCurrentUser().getUid());
     }
 
     @Override
@@ -130,14 +130,17 @@ public class CameraFragment extends Fragment {
 
         // load the imageview with the last image I saved (should exist in local storage) or if there is none then leave blank
         // set up pointer to the small file location
-        File file = new File(getContext().getFilesDir(), Keys.FILE_SMALL);
-        if(file.exists()) {
-            // pipe it into the image view
-            Log.d(TAG, "initializing imageview with picture from " + file.getAbsolutePath());
-            // TODO: is it cleaner to have two versions of displayImage or to put a bunch of code here to turn the File into a byte array?
-            displayImage(file.getAbsolutePath());
+        try {
+            File file = new File(getContext().getFilesDir(), Keys.FILE_SMALL);
+            if (file.exists()) {
+                // pipe it into the image view
+                Log.d(TAG, "initializing imageview with picture from " + file.getAbsolutePath());
+                // TODO: is it cleaner to have two versions of displayImage or to put a bunch of code here to turn the File into a byte array?
+                displayImage(file.getAbsolutePath());
+            }
+        } catch (NullPointerException npe) {
+            Log.d(TAG, "somehow lost the context, possibly due to rotation?", npe);
         }
-
 
         // attach listeners to the buttons
         //mButtSave.setOnClickListener(mSaveClick);
@@ -147,7 +150,7 @@ public class CameraFragment extends Fragment {
 
 
         // attach the onValueChanged listener
-        mMyDatabase.child("camera").child("photo_pipeline_state").addValueEventListener(mOnCameraStateChangeListener);
+        mMyDatabase.child(Keys.DB_CAMERA_STATE).addValueEventListener(mOnCameraStateChangeListener);
 
         // TODO: more init? idk
 
@@ -236,7 +239,7 @@ public class CameraFragment extends Fragment {
 
     private void beginDownloadSmallImage(String s) {
         final String sf = s;
-        Log.d(TAG, "beginning to download " + mMyImages.child(sf).getPath());
+        Log.d(TAG, "beginning to download, firebase path = " + mMyImages.child(sf).getPath());
 
         // this whole thing runs asynchronously
         mMyImages.child(sf).getBytes(TWO_MEGABYTE).addOnSuccessListener(new OnSuccessListener<byte[]>() {
@@ -253,7 +256,7 @@ public class CameraFragment extends Fragment {
                 // part 3: enable buttons (if connected)
                 if (mIsConnected) { mButtManual.setEnabled(true);mButtHires.setEnabled(true); }
                 // part 4: move to next camera state
-                mMyDatabase.child("camera").child("photo_pipeline_state").setValue(3);
+                mMyDatabase.child(Keys.DB_CAMERA_STATE).setValue(3);
                 // on success, reset the # of attempts
                 mAttemptCount = 0;
             }
@@ -270,7 +273,7 @@ public class CameraFragment extends Fragment {
                     // part 3: enable buttons (if connected)
                     if (mIsConnected) { mButtManual.setEnabled(true);mButtHires.setEnabled(true); }
                     // part 4: move to next camera state
-                    mMyDatabase.child("camera").child("photo_pipeline_state").setValue(3);
+                    mMyDatabase.child(Keys.DB_CAMERA_STATE).setValue(3);
                     // on giving up, reset the # of attempts
                     mAttemptCount = 0;
                 } else {
@@ -303,7 +306,7 @@ public class CameraFragment extends Fragment {
                 // part 3: enable buttons (if connected)
                 if (mIsConnected) { mButtManual.setEnabled(true);mButtHires.setEnabled(true); }
                 // part 4: move to next camera state
-                mMyDatabase.child("camera").child("photo_pipeline_state").setValue(3);
+                mMyDatabase.child(Keys.DB_CAMERA_STATE).setValue(3);
                 // on success, reset the # of attempts
                 mAttemptCount = 0;
             }
@@ -320,7 +323,7 @@ public class CameraFragment extends Fragment {
                     // part 3: enable buttons (if connected)
                     if (mIsConnected) { mButtManual.setEnabled(true);mButtHires.setEnabled(true); }
                     // part 4: move to next camera state
-                    mMyDatabase.child("camera").child("photo_pipeline_state").setValue(3);
+                    mMyDatabase.child(Keys.DB_CAMERA_STATE).setValue(3);
                     // on giving up, reset the # of attempts
                     mAttemptCount = 0;
                 } else {
@@ -358,7 +361,7 @@ public class CameraFragment extends Fragment {
     View.OnClickListener mManualPhotoRequest = new View.OnClickListener() {
         @Override public void onClick(View v) {
             // to request a photo be taken, simply move to state 1
-            mMyDatabase.child("camera").child("photo_pipeline_state").setValue(1);
+            mMyDatabase.child(Keys.DB_CAMERA_STATE).setValue(1);
         }
     };
 
@@ -383,7 +386,7 @@ public class CameraFragment extends Fragment {
 
     public void triggerDownload() {
         // set state to 4 to begin the download operation
-        mMyDatabase.child("camera").child("photo_pipeline_state").setValue(4);
+        mMyDatabase.child(Keys.DB_CAMERA_STATE).setValue(4);
     }
 
     private ValueEventListener mOnCameraStateChangeListener = new ValueEventListener() {

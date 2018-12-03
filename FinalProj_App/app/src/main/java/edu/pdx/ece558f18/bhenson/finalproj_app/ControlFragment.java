@@ -73,7 +73,7 @@ public class ControlFragment extends Fragment {
         if(mAuth.getCurrentUser() == null) {
             Log.d(TAG, "somehow lost login credentials!");
         }
-        mMyDatabase = FirebaseDatabase.getInstance().getReference().child("users").child(mAuth.getCurrentUser().getUid());
+        mMyDatabase = FirebaseDatabase.getInstance().getReference().child(Keys.DB_TOPFOLDER).child(mAuth.getCurrentUser().getUid());
     }
 
     @Override
@@ -107,9 +107,10 @@ public class ControlFragment extends Fragment {
 
 
         // get initial values for armtoggle and timeout from database
+        // note: this only needs to get the value for the timeout, the other listener gets the armed status
         mMyDatabase.addListenerForSingleValueEvent(mInitValuesListener);
 
-        mMyDatabase.child("pi_armed").addValueEventListener(mArmedChangedListener);
+        mMyDatabase.child(Keys.DB_ARMED).addValueEventListener(mArmedChangedListener);
 
 
         // attach listeners here
@@ -162,8 +163,8 @@ public class ControlFragment extends Fragment {
         @Override public void onDataChange(@NonNull DataSnapshot ds) {
             Log.d(TAG, "got the initial values");
             try {
-                mToggle.setChecked(ds.child("pi_armed").getValue(Boolean.class));
-                int fromdb = ds.child("timeout_threshold").getValue(Integer.class);
+                //mToggle.setChecked(ds.child(Keys.DB_ARMED).getValue(Boolean.class));
+                int fromdb = ds.child(Keys.DB_TIMEOUT).getValue(Integer.class);
                 // TODO: convert # of seconds back into index
                 mNumberPicker.setValue(2);
 
@@ -181,7 +182,7 @@ public class ControlFragment extends Fragment {
     View.OnClickListener armedClickListener = new View.OnClickListener() {
         @Override public void onClick(View v) {
             // send new value to database
-            mMyDatabase.child("pi_armed").setValue( mToggle.isChecked() );
+            mMyDatabase.child(Keys.DB_ARMED).setValue( mToggle.isChecked() );
             // disable, but re-enable after 1 second
             mToggle.setEnabled(false);
             mHandler.postDelayed(reEnableToggle, 1000);
@@ -193,15 +194,7 @@ public class ControlFragment extends Fragment {
     View.OnClickListener logoutButtonListener = new View.OnClickListener() {
         @Override public void onClick(View v) {
             Log.d(TAG, "logging out");
-            // sign out from firebase
-            mAuth.signOut();
-            // erase stored username and password from sharedprefs
-            SharedPreferences prefs = getContext().getSharedPreferences(Keys.FILE_PREFS, Context.MODE_PRIVATE);
-            SharedPreferences.Editor e = prefs.edit();
-            e.remove(Keys.KEY_USER);
-            e.remove(Keys.KEY_PASS);
-            e.commit(); // wiser to commit it immediately instead of whenver it feels like it
-            // this part executes in the pager activity
+            // the whole operation executes in the pager activity
             mListener.returnToLogin();
         }
     };

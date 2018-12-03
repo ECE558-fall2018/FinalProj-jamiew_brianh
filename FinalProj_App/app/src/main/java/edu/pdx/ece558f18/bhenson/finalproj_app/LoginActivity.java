@@ -155,7 +155,7 @@ public class LoginActivity extends AppCompatActivity {
                     e.putString(Keys.KEY_USER, username_f);
                     e.apply();
 
-                    DatabaseReference userNode = mDatabase.child("users").child(mAuth.getCurrentUser().getUid());
+                    DatabaseReference userNode = mDatabase.child(Keys.DB_TOPFOLDER).child(mAuth.getCurrentUser().getUid());
                     userNode.addListenerForSingleValueEvent(verifyNodeExists);
                 } else {
                     // If sign in fails, display a message to the user.
@@ -178,20 +178,20 @@ public class LoginActivity extends AppCompatActivity {
             mProgressBar.setProgress(75);
             // verify that the node exists... if it doesn't exist, then create default fields for everything it will need!
             // if the 'email' field is null then assume the whole thing is missing
-            if(ds.child("email").getValue() == null) {
+            if(ds.child(Keys.DB_EMAIL).getValue() == null) {
                 Log.d(TAG, "creating default database structures");
                 // create the node with default values
-                DatabaseReference userNode = mDatabase.child("users").child(mAuth.getCurrentUser().getUid());
+                DatabaseReference userNode = mDatabase.child(Keys.DB_TOPFOLDER).child(mAuth.getCurrentUser().getUid());
                 // dont need to create email or apptoken, those created below
-                //userNode.child("email");
-                //userNode.child("apptoken");
+                //userNode.child(Keys.DB_EMAIL);
+                //userNode.child(Keys.DB_APPTOKEN);
                 // TODO: replace these with constants in Keys file
-                userNode.child("pi_timestamp").setValue("err");
-                userNode.child("pi_armed").setValue(false);
-                userNode.child("pi_triggered").setValue(false);
-                userNode.child("pi_connected").setValue(false);
-                userNode.child("timeout_threshold").setValue(10);
-                userNode.child("camera").child("photo_pipeline_state").setValue(0);
+                userNode.child(Keys.DB_TIMESTAMP).setValue("err");
+                userNode.child(Keys.DB_ARMED).setValue(false);
+                userNode.child(Keys.DB_TRIGGERED).setValue(false);
+                userNode.child(Keys.DB_CONNECTED).setValue(false);
+                userNode.child(Keys.DB_TIMEOUT).setValue(10);
+                userNode.child(Keys.DB_CAMERA_STATE).setValue(0);
                 // TODO: decide how sound communication is structured
                 userNode.child("sound").child("done_uploading_new").setValue(false);
                 userNode.child("sound").child("done_downloading_new").setValue(false);
@@ -203,7 +203,7 @@ public class LoginActivity extends AppCompatActivity {
                 userNode.child("voip").child("pi_username").setValue(false);
                 userNode.child("voip").child("pi_password").setValue(false);
                 // TODO: create empty sensor config object here
-                userNode.child("sensor_config").child("sensor_config_obj").setValue("???");
+                userNode.child(Keys.DB_SENSOR_CONFIG).setValue("???");
             }
 
             // once I have logged in and know my UUID then I should try to send the MessagingService token to the database
@@ -234,10 +234,10 @@ public class LoginActivity extends AppCompatActivity {
             Log.d(TAG, "token= " + token);
 
             // store the token in the database, at the path "users/<uuid>/apptoken"
-            DatabaseReference userNode = mDatabase.child("users").child(mAuth.getCurrentUser().getUid());
-            DatabaseReference temp3 = userNode.child("apptoken");
+            DatabaseReference userNode = mDatabase.child(Keys.DB_TOPFOLDER).child(mAuth.getCurrentUser().getUid());
+            DatabaseReference temp3 = userNode.child(Keys.DB_APPTOKEN);
             temp3.setValue(token);
-            DatabaseReference temp4 = userNode.child("email");
+            DatabaseReference temp4 = userNode.child(Keys.DB_EMAIL);
             temp4.setValue(mAuth.getCurrentUser().getEmail());
 
             // NOW i'm finally done and ready to move on
