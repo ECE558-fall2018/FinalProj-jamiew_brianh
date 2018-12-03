@@ -88,25 +88,6 @@ public class LoginActivity extends AppCompatActivity {
 
 
 
-        // manually get the token
-        // TODO: remove this block
-        FirebaseInstanceId.getInstance().getInstanceId().addOnCompleteListener(new OnCompleteListener<InstanceIdResult>() {
-            @Override public void onComplete(@NonNull Task<InstanceIdResult> task) {
-                if (!task.isSuccessful()) {
-                    Log.w(TAG, "getInstanceId failed", task.getException());
-                    return;
-                }
-
-                // Get new Instance ID token
-                String token = task.getResult().getToken();
-
-                // Log and toast
-                //String msg = getString(R.string.msg_token_fmt, token);
-                Log.d(TAG, token);
-                Toast.makeText(LoginActivity.this, token, Toast.LENGTH_SHORT).show();
-            }
-        });
-
         // uncomment this function to always skip the login page
         // causes very slight hitch but whatever
         //proceedToApp();

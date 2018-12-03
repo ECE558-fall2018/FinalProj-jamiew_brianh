@@ -11,8 +11,7 @@ import android.view.View;
 import android.view.ViewGroup;
 import android.widget.*;
 import com.google.firebase.auth.FirebaseAuth;
-import com.google.firebase.database.DatabaseReference;
-import com.google.firebase.database.FirebaseDatabase;
+import com.google.firebase.database.*;
 
 
 /**
@@ -27,11 +26,12 @@ public class ControlFragment extends Fragment {
     public static final String TAG = "SEC_ControlFragment";
     private ControlFragmentListener mListener;
     private FirebaseAuth mAuth;
-    private DatabaseReference mDatabase;
+    private DatabaseReference mMyDatabase;
 
     private CheckBox mCheckBox;
     private Button mLogout;
     private Switch mToggle;
+    private NumberPicker mNumberPicker;
 
     private boolean mIsConnected;
 
@@ -66,7 +66,7 @@ public class ControlFragment extends Fragment {
         if(mAuth.getCurrentUser() == null) {
             Log.d(TAG, "somehow lost login credentials!");
         }
-        mDatabase = FirebaseDatabase.getInstance().getReference();
+        mMyDatabase = FirebaseDatabase.getInstance().getReference().child("users").child(mAuth.getCurrentUser().getUid());
     }
 
     @Override
@@ -77,7 +77,7 @@ public class ControlFragment extends Fragment {
 
         // fill all the UI variables with their objects
         TextView whoami = (TextView) v.findViewById(R.id.tv_whoami);
-        NumberPicker mNumberPicker = (NumberPicker) v.findViewById(R.id.picker_timeout);
+        mNumberPicker = (NumberPicker) v.findViewById(R.id.picker_timeout);
         mCheckBox = (CheckBox) v.findViewById(R.id.cb_autologin);
         mLogout = (Button) v.findViewById(R.id.butt_logout);
         mToggle = (Switch) v.findViewById(R.id.switch_armtoggle);
@@ -99,10 +99,14 @@ public class ControlFragment extends Fragment {
 
 
         // armtoggle initial value, from database
-        // TODO
-
         // timeout initial value, from database
-        // TODO
+        // both start out disabled until their initial values are gotten
+        mToggle.setEnabled(false);
+        mToggle.setEnabled(false);
+        mMyDatabase.addListenerForSingleValueEvent(mInitValuesListener);
+
+
+
 
 
         // attach listeners here
@@ -125,6 +129,30 @@ public class ControlFragment extends Fragment {
     public void setPiConnection(boolean b) {
         // TODO
     }
+
+
+
+    private ValueEventListener mInitValuesListener = new ValueEventListener() {
+        @Override public void onDataChange(@NonNull DataSnapshot ds) {
+            Log.d(TAG, "got the initial values");
+            try {
+                mToggle.setChecked(ds.child("pi_armed").getValue(Boolean.class));
+                int fromdb = ds.child("timeout_threshold").getValue(Integer.class);
+                // TODO: convert # of seconds back into index
+                mNumberPicker.setValue(2);
+
+                mToggle.setEnabled(true);
+                mNumberPicker.setEnabled(true);
+            } catch (NullPointerException npe) {
+                Log.d(TAG, "error: bad data when getting initial values", npe);
+                return;
+            }
+        }
+        @Override public void onCancelled(@NonNull DatabaseError de) {
+            // Failed to read value, not sure how or what to do about it
+            Log.d(TAG, "firebase error: failed to get snapshot??", de.toException());
+        }
+    };
 
 
     View.OnClickListener logoutButtonListener = new View.OnClickListener() {
