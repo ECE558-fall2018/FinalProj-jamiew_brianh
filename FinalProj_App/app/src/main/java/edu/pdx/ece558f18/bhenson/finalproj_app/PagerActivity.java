@@ -24,7 +24,7 @@ public class PagerActivity extends AppCompatActivity
                     CameraFragment.CameraFragmentListener,
                     SensorListFragment.SensorListFragmentListener {
 
-    public static final String TAG = "SEC_PagerActivity";
+    public static final String TAG = "SEC_Pager";
 
     /**
      * The {@link android.support.v4.view.PagerAdapter} that will provide
@@ -147,6 +147,11 @@ public class PagerActivity extends AppCompatActivity
     @Override
     public void returnToLogin() {
         // this does the whole logout operation
+
+        // first, gotta unregister any listeners i think?????
+        mMyDatabase.child(Keys.DB_CONNECTED).removeEventListener(mDisconnectListener);
+        mMyDatabase.child(Keys.DB_CAMERA_STATE).removeEventListener(((CameraFragment)mSectionsPagerAdapter.getRegisteredFragment(2)).mOnCameraStateChangeListener);
+        mMyDatabase.child(Keys.DB_ARMED).removeEventListener(((ControlFragment)mSectionsPagerAdapter.getRegisteredFragment(1)).mArmedChangedListener);
 
         // sign out from firebase
         mAuth.signOut();

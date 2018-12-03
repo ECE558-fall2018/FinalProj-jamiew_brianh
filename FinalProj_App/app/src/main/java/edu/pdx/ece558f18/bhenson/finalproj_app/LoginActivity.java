@@ -22,7 +22,7 @@ import com.google.firebase.iid.FirebaseInstanceId;
 import com.google.firebase.iid.InstanceIdResult;
 
 public class LoginActivity extends AppCompatActivity {
-    public static final String TAG = "SEC_LoginActivity";
+    public static final String TAG = "SEC_Login";
 
     // references to relevant UI elements
     private Button mSubmitButton;

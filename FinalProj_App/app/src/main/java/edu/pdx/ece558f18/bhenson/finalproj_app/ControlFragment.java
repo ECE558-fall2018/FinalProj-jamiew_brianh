@@ -143,7 +143,7 @@ public class ControlFragment extends Fragment {
     }
 
 
-    private ValueEventListener mArmedChangedListener = new ValueEventListener() {
+    protected ValueEventListener mArmedChangedListener = new ValueEventListener() {
         @Override public void onDataChange(@NonNull DataSnapshot ds) {
             Log.d(TAG, "armed value changed");
             try {

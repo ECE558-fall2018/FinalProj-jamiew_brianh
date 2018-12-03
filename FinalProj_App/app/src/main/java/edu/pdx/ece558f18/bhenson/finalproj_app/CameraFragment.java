@@ -389,7 +389,7 @@ public class CameraFragment extends Fragment {
         mMyDatabase.child(Keys.DB_CAMERA_STATE).setValue(4);
     }
 
-    private ValueEventListener mOnCameraStateChangeListener = new ValueEventListener() {
+    protected ValueEventListener mOnCameraStateChangeListener = new ValueEventListener() {
         @Override public void onDataChange(@NonNull DataSnapshot ds) {
             int state;
             try {
