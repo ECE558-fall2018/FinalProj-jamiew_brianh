@@ -13,8 +13,7 @@ import android.view.View;
 import android.view.ViewGroup;
 import android.widget.*;
 import com.google.firebase.auth.FirebaseAuth;
-import com.google.firebase.database.DatabaseReference;
-import com.google.firebase.database.FirebaseDatabase;
+import com.google.firebase.database.*;
 
 
 /**
@@ -96,9 +95,11 @@ public class SensorListFragment extends Fragment {
         mReset.setOnClickListener(mResetListener);
 
         // TODO: get the sensor object from the database, the list is empty until that happens
-        mSensorListObj_master = new SensorListObj(30);
+        mSensorListObj_master = new SensorListObj(0);
         // create the temp as a copy of the master
         mSensorListObj_temp = new SensorListObj(mSensorListObj_master);
+
+        mMyDatabase.child(Keys.DB_SENSOR_CONFIG).addListenerForSingleValueEvent(mInitSensConfig);
 
         setPiConnection(mIsConnected);
         return v;
@@ -106,6 +107,11 @@ public class SensorListFragment extends Fragment {
 
         // TODO: add a "calibrate" button to trigger the range finder setup phase?
     }
+
+
+
+
+
 
     // sets the buttons and whatnot to be enabled/disabled as appropriate
     public void setPiConnection(boolean b) {
@@ -126,6 +132,31 @@ public class SensorListFragment extends Fragment {
     }
 
 
+    protected ValueEventListener mInitSensConfig = new ValueEventListener() {
+        @Override public void onDataChange(@NonNull DataSnapshot ds) {
+            Log.d(TAG, "got the initial values");
+            try {
+                String json = ds.getValue(String.class);
+                if(json == null) {
+                    Log.d(TAG, "ERROR: got bad data from the firebase");
+                    throw new NullPointerException();
+                } else {
+                    // create master from database resposne
+                    mSensorListObj_master = new SensorListObj(json);
+                    // create the temp as a copy of the master
+                    mSensorListObj_temp = new SensorListObj(mSensorListObj_master);
+                    mAdapter.notifyDataSetChanged();
+                }
+            } catch (NullPointerException npe) {
+                Log.d(TAG, "error: bad data when getting initial values", npe);
+                return;
+            }
+        }
+        @Override public void onCancelled(@NonNull DatabaseError de) {
+            // Failed to read value, not sure how or what to do about it
+            Log.d(TAG, "firebase error: failed to get snapshot??", de.toException());
+        }
+    };
 
 
     View.OnClickListener mResetListener = new View.OnClickListener() {
@@ -134,6 +165,7 @@ public class SensorListFragment extends Fragment {
             mSensorListObj_temp = new SensorListObj(mSensorListObj_master);
             // then update the ui
             mAdapter.notifyDataSetChanged();
+            mApply.setEnabled(false); mReset.setEnabled(false);
         }
     };
 
@@ -144,6 +176,7 @@ public class SensorListFragment extends Fragment {
             // then send the master to the database
             // remember to .toString() to jsonify it, if I dont the firebase will try to serialize the object and fail cuz its a piece of crap
             mMyDatabase.child(Keys.DB_SENSOR_CONFIG).setValue(mSensorListObj_master.toString());
+            mApply.setEnabled(false); mReset.setEnabled(false);
         }
     };
 

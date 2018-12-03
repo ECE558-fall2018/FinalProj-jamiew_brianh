@@ -23,6 +23,7 @@ public class SensorListObj implements java.io.Serializable {
 
     // create object with given size
     public SensorListObj(int number) {
+        // TODO: when creating this for the first time, use the correct size/GPIOnames
         mNameList = new String[number];
         mTypeList = new int[number];
         for(int i = 0; i < number; i++) {

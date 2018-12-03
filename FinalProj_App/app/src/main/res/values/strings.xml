@@ -27,11 +27,11 @@
         <item>Camera View</item>
     </string-array>
     <!-- Strings related to fragment 1: settings -->
-    <string name="config_page_label">Use this to add/remove/replace sensors on the device</string>
+    <string name="config_page_label">Use this to add/remove/replace sensors on the device\n(scrollable)</string>
     <string name="apply_label">Apply Changes</string>
     <string name="reset_label">Revert Changes</string>
     <string-array name="sensor_types_array">
-        <item>Disconnected</item>
+        <item>D/C</item>
         <item>Contact sensor</item>
         <item>Vibration sensor</item>
     </string-array>
