@@ -10,11 +10,9 @@ import java.io.IOException;
 
 /* NOTE:
 in the app-level build.gradle file, I added under dependencies:
-    compile (
-            [group: 'com.fasterxml.jackson.core', name: 'jackson-core', version: '2.9.7'],
-            [group: 'com.fasterxml.jackson.core', name: 'jackson-annotations', version: '2.9.7'],
-            [group: 'com.fasterxml.jackson.core', name: 'jackson-databind', version: '2.9.7']
-    )
+    implementation 'com.fasterxml.jackson.core:jackson-core:2.9.7'
+    implementation 'com.fasterxml.jackson.core:jackson-annotations:2.9.7'
+    implementation 'com.fasterxml.jackson.core:jackson-databind:2.9.7'
 */
 public class SensorListObj implements java.io.Serializable {
 //    public class SensorObj implements java.io.Serializable {

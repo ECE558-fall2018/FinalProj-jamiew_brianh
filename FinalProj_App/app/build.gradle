@@ -33,11 +33,9 @@ dependencies {
     implementation 'com.google.firebase:firebase-storage:16.0.5'
     implementation 'com.google.firebase:firebase-auth:16.0.5'
     implementation 'com.google.firebase:firebase-messaging:17.3.4'
-    compile (
-            [group: 'com.fasterxml.jackson.core', name: 'jackson-core', version: '2.9.7'],
-            [group: 'com.fasterxml.jackson.core', name: 'jackson-annotations', version: '2.9.7'],
-            [group: 'com.fasterxml.jackson.core', name: 'jackson-databind', version: '2.9.7']
-    )
+    implementation 'com.fasterxml.jackson.core:jackson-core:2.9.7'
+    implementation 'com.fasterxml.jackson.core:jackson-annotations:2.9.7'
+    implementation 'com.fasterxml.jackson.core:jackson-databind:2.9.7'
 
 }
 
