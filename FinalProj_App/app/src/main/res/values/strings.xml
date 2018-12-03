@@ -50,9 +50,9 @@
     <string name="begin_voip_label">Begin VOIP Call</string>
     <string name="end_voip_label">End Call</string>
     <string name="new_file_toast">HiRes photo saved to: "%1$s"</string>
-    <string name="big_file_fail_toast">Failed to download HiRes image, retrying&#8230;</string>
+    <string name="big_file_fail_toast">Failed%1$i to download HiRes image, retrying&#8230;</string>
     <string name="big_file_giveup_toast">Repeatedly failed to download HiRes image, I give up.</string>
-    <string name="small_file_fail_toast">Failed to download LoRes image, retrying&#8230;</string>
+    <string name="small_file_fail_toast">Failed%1$i to download LoRes image, retrying&#8230;</string>
     <string name="small_file_giveup_toast">Repeatedly failed to download LoRes image, I give up.</string>
 
 

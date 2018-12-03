@@ -134,10 +134,9 @@ public class CameraFragment extends Fragment {
         if(file.exists()) {
             // pipe it into the image view
             Log.d(TAG, "initializing imageview with picture from " + file.getAbsolutePath());
-            mImageView.setImageBitmap(BitmapFactory.decodeFile(file.getAbsolutePath()));
+            // TODO: is it cleaner to have two versions of displayImage or to put a bunch of code here to turn the File into a byte array?
+            displayImage(file.getAbsolutePath());
         }
-
-
 
 
         // attach listeners to the buttons
@@ -182,6 +181,59 @@ public class CameraFragment extends Fragment {
     }
 
 
+    private void displayImage(byte[] bytes) {
+        mImageView.setImageBitmap(BitmapFactory.decodeByteArray(bytes, 0, bytes.length));
+    }
+    private void displayImage(String filename) {
+        mImageView.setImageBitmap(BitmapFactory.decodeFile(filename));
+    }
+    private boolean saveImageToLocal(String name, byte[] bytes) {
+        // return false if everything is OK
+        // return true if there was some exception
+        try {
+            FileOutputStream outputStream = getContext().openFileOutput(name, Context.MODE_PRIVATE);
+            outputStream.write(bytes);
+            outputStream.close();
+            Log.d(TAG, "successfully saved lores file to local storage");
+            return false;
+        } catch (FileNotFoundException fnfe) {
+            Log.d(TAG, "fnfe exception1", fnfe);
+            return true;
+        } catch (IOException ioe) {
+            Log.d(TAG, "io exception1", ioe);
+            return true;
+        } catch (NullPointerException npe) {
+            Log.d(TAG, "npe exception1, perhaps due to device rotation?", npe);
+            return true;
+        }
+    }
+
+    private boolean saveImageToExternal(byte[] bytes) {
+        // return false if everything is OK
+        // return true if there was some exception
+        Date dNow = new Date();
+        SimpleDateFormat ft = new SimpleDateFormat("yyMMddhhmmssMs", Locale.US);
+        String newfilename = ft.format(dNow) + ".jpg";
+        try {
+            File f = new File(getPublicPicturesDir(), newfilename);
+            Log.d(TAG, "saving hires file to " + f.getAbsolutePath());
+            FileOutputStream outputStream = new FileOutputStream(f);
+            outputStream.write(bytes);
+            outputStream.close();
+            // part 2: create toast with the file name I used
+            Toast.makeText(getContext(), getString(R.string.new_file_toast, newfilename), Toast.LENGTH_SHORT).show();
+            return false;
+        } catch (FileNotFoundException fnfe) {
+            Log.d(TAG, "fnfe exception2", fnfe);
+            Toast.makeText(getContext(), getString(R.string.error), Toast.LENGTH_SHORT).show();
+            return true;
+        } catch (IOException ioe) {
+            Log.d(TAG, "io exception2", ioe);
+            Toast.makeText(getContext(), getString(R.string.error), Toast.LENGTH_SHORT).show();
+            return true;
+        }
+    }
+
     private void beginDownloadSmallImage(String s) {
         final String sf = s;
         Log.d(TAG, "beginning to download " + mMyImages.child(sf).getPath());
@@ -194,18 +246,9 @@ public class CameraFragment extends Fragment {
                 Log.d(TAG, "done downloading lores image, size = " + bytes.length);
 
                 // part 1: save it into local storage
-                try {
-                    FileOutputStream outputStream = getContext().openFileOutput(sf, Context.MODE_PRIVATE);
-                    outputStream.write(bytes);
-                    outputStream.close();
-                } catch (FileNotFoundException fnfe) {
-                    Log.d(TAG, "fnfe exception1", fnfe);
-                } catch (IOException ioe) {
-                    Log.d(TAG, "io exception1", ioe);
-                }
-
+                saveImageToLocal(sf, bytes);
                 // part 2: display on imageview
-                mImageView.setImageBitmap(BitmapFactory.decodeByteArray(bytes, 0, bytes.length));
+                displayImage(bytes);
 
                 // part 3: enable buttons (if connected)
                 if (mIsConnected) { mButtManual.setEnabled(true);mButtHires.setEnabled(true); }
@@ -232,7 +275,7 @@ public class CameraFragment extends Fragment {
                     mAttemptCount = 0;
                 } else {
                     // toast?
-                    Toast.makeText(getContext(), getString(R.string.small_file_fail_toast), Toast.LENGTH_SHORT).show();
+                    Toast.makeText(getContext(), getString(R.string.small_file_fail_toast, mAttemptCount), Toast.LENGTH_SHORT).show();
                     // retry
                     beginDownloadSmallImage(sf);
                 }
@@ -253,24 +296,9 @@ public class CameraFragment extends Fragment {
                 Log.d(TAG, "done downloading hires image, size = " + bytes.length);
 
                 // part 1: save it into external storage
-                Date dNow = new Date();
-                SimpleDateFormat ft = new SimpleDateFormat("yyMMddhhmmssMs", Locale.US);
-                String newfilename = ft.format(dNow) + ".jpg";
-                try {
-                    File f = new File(getPublicPicturesDir(), newfilename);
-                    Log.d(TAG, "saving hires file to " + f.getAbsolutePath());
-                    FileOutputStream outputStream = new FileOutputStream(f);
-                    outputStream.write(bytes);
-                    outputStream.close();
-                    // part 2: create toast with the file name I used
-                    Toast.makeText(getContext(), getString(R.string.new_file_toast, newfilename), Toast.LENGTH_SHORT).show();
-                } catch (FileNotFoundException fnfe) {
-                    Log.d(TAG, "fnfe exception2", fnfe);
-                    Toast.makeText(getContext(), getString(R.string.error), Toast.LENGTH_SHORT).show();
-                } catch (IOException ioe) {
-                    Log.d(TAG, "io exception2", ioe);
-                    Toast.makeText(getContext(), getString(R.string.error), Toast.LENGTH_SHORT).show();
-                }
+                saveImageToExternal(bytes);
+
+                // TODO: i could display the hirez version here if i felt like it
 
                 // part 3: enable buttons (if connected)
                 if (mIsConnected) { mButtManual.setEnabled(true);mButtHires.setEnabled(true); }
@@ -297,7 +325,7 @@ public class CameraFragment extends Fragment {
                     mAttemptCount = 0;
                 } else {
                     // toast
-                    Toast.makeText(getContext(), getString(R.string.big_file_fail_toast), Toast.LENGTH_SHORT).show();
+                    Toast.makeText(getContext(), getString(R.string.big_file_fail_toast, mAttemptCount), Toast.LENGTH_SHORT).show();
                     // retry
                     beginDownloadBigImage(sf);
                 }
@@ -311,22 +339,10 @@ public class CameraFragment extends Fragment {
     public File getPublicPicturesDir() {
         // Get the directory for the user's public pictures directory.
         File file = new File(Environment.getExternalStoragePublicDirectory(Environment.DIRECTORY_PICTURES), Keys.DIR_PUBLIC);
-        Log.d(TAG, "base dir exists:" + Environment.getExternalStoragePublicDirectory(Environment.DIRECTORY_PICTURES).exists());
-        Log.d(TAG, "my dir exists:" + file.exists());
-        Log.d(TAG, "external storage is writable: " + isExternalStorageWritable());
         if (!file.mkdirs()) {
             Log.d(TAG, "Photos directory not created, " + file.getAbsolutePath());
         }
         return file;
-    }
-
-
-    public boolean isExternalStorageWritable() {
-        String state = Environment.getExternalStorageState();
-        if (Environment.MEDIA_MOUNTED.equals(state)) {
-            return true;
-        }
-        return false;
     }
 
 
