@@ -31,7 +31,7 @@
     <string name="apply_label">Apply Changes</string>
     <string name="reset_label">Revert Changes</string>
     <string-array name="sensor_types_array">
-        <item>D/C</item>
+        <item>None</item>
         <item>Contact sensor</item>
         <item>Vibration sensor</item>
     </string-array>

@@ -6,7 +6,7 @@
 
     <TextView
             android:text="@string/error"
-            android:layout_width="wrap_content"
+            android:layout_width="70dp"
             android:layout_height="wrap_content"
             android:id="@+id/tv_gpio_name"
             android:layout_marginTop="8dp"
