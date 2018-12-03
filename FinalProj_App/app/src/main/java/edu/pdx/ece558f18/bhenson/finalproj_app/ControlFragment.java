@@ -120,11 +120,6 @@ public class ControlFragment extends Fragment {
         // TODO
         // timout select
 
-        //mLogout.requestFocus();
-        // note: it looks dumb when the NumberPicker has focus as the fragment launches, so either somehow unfocus it or focus on something else
-        // note: it's not totally consistient tho, the NumberPicker keeps grabbing focus
-
-
         setPiConnection(mIsConnected);
         return v;
     }
