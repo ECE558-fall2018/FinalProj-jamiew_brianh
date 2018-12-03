@@ -64,5 +64,21 @@ public class SensorListObj implements java.io.Serializable {
         }
     }
 
-
+    @Override
+    public boolean equals(Object o) {
+        if (!(o instanceof SensorListObj)) {
+            return false;
+        } else {
+            SensorListObj slo = (SensorListObj) o;
+            if (slo.mNameList.length != mNameList.length) return false;
+            for (int i = 0; i < mNameList.length; i++) {
+                if (slo.mNameList[i].equals(mNameList[i])) return false;
+            }
+            if (slo.mTypeList.length != mTypeList.length) return false;
+            for (int i = 0; i < mTypeList.length; i++) {
+                if (slo.mTypeList[i] != mTypeList[i]) return false;
+            }
+            return true;
+        }
+    }
 }

@@ -11,6 +11,8 @@ import android.util.Log;
 import android.view.LayoutInflater;
 import android.view.View;
 import android.view.ViewGroup;
+import android.widget.AdapterView;
+import android.widget.ArrayAdapter;
 import android.widget.Spinner;
 import android.widget.TextView;
 
@@ -33,7 +35,8 @@ public class SensorListFragment extends Fragment {
     private RecyclerView mRecyclerView;
     private MyAdapter mAdapter;
 
-    private SensorListObj mSensorListObj;
+    private SensorListObj mSensorListObj_master;
+    private SensorListObj mSensorListObj_temp;
 
     // TODO: pretty much everything in this file
 
@@ -79,7 +82,10 @@ public class SensorListFragment extends Fragment {
         mRecyclerView.setAdapter(mAdapter);
         // note: change the adapter each time the UI updates? what does that mean?
 
-        mSensorListObj = new SensorListObj(10);
+        //mAdapter.notifyDataSetChanged();
+
+        mSensorListObj_master = new SensorListObj(10);
+        mSensorListObj_temp = mSensorListObj_master;
 
         setPiConnection(mIsConnected);
         return v;
@@ -101,7 +107,8 @@ public class SensorListFragment extends Fragment {
 
 
 
-    public class MyViewHolder extends RecyclerView.ViewHolder implements View.OnClickListener {
+    public class MyViewHolder extends RecyclerView.ViewHolder
+            implements AdapterView.OnItemSelectedListener {
         public TextView mTv;
         public Spinner mSpinner;
         public int mPosition;
@@ -111,22 +118,40 @@ public class SensorListFragment extends Fragment {
             super(v);
             mTv = (TextView) v.findViewById(R.id.tv_gpio_name);
             mSpinner = (Spinner) v.findViewById(R.id.spinner_gpio_state);
+            // TODO: set the displayed contents of the spinner
+
+            // Create an ArrayAdapter using the string array and a default spinner layout
+            ArrayAdapter<CharSequence> adapter = ArrayAdapter.createFromResource(getContext(),
+                    R.array.sensor_types_array, android.R.layout.simple_spinner_item);
+            // Specify the layout to use when the list of choices appears
+            adapter.setDropDownViewResource(android.R.layout.simple_spinner_dropdown_item);
+            // Apply the adapter to the spinner
+            mSpinner.setAdapter(adapter);
             // set listener for the spinner value change
-            //v.setOnClickListener(this);
+            mSpinner.setOnItemSelectedListener(this);
         }
         public void Bind(int position) {
             // this is basically onCreateView
 //            String title = mBookTitles[position];
 //            mTitleTextView.setText(title);
             mPosition = position;
-            mTv.setText(mSensorListObj.mNameList[position]);
-            mSpinner.setSelection(mSensorListObj.mTypeList[position]);
+            mTv.setText(mSensorListObj_temp.mNameList[position]);
+            mSpinner.setSelection(mSensorListObj_temp.mTypeList[position]);
         }
+
         @Override
-        public void onClick(View v) {
-            // Get parent Activity and send notification
-//            OnSelectedBookChangeListener listener = (OnSelectedBookChangeListener) getActivity();
-//            listener.onSelectedBookChanged(mPosition);
+        public void onItemSelected(AdapterView<?> parent, View view, int position, long id) {
+            Log.d(TAG, "entry " + mPosition + " changed to " + position);
+            // if something was selected, then change what's held in mSensorListObj_temp to match
+            // if _temp and _master are the same, then disable both buttons
+            // if they are different, then enable both buttons
+
+        }
+
+        @Override
+        public void onNothingSelected(AdapterView<?> parent) {
+            // not sure how this can happen, or what do do when it does happen?
+            Log.d(TAG, "entry " + mPosition + " clicked nothing");
         }
     }
 
@@ -143,7 +168,7 @@ public class SensorListFragment extends Fragment {
         }
         @Override
         public int getItemCount() {
-            return mSensorListObj.mNameList.length;
+            return mSensorListObj_temp.mNameList.length;
         }
     }
 
