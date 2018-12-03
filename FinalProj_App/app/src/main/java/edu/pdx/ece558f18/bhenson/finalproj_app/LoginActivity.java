@@ -191,7 +191,6 @@ public class LoginActivity extends AppCompatActivity {
                 userNode.child("pi_triggered").setValue(false);
                 userNode.child("pi_connected").setValue(false);
                 userNode.child("timeout_threshold").setValue(10);
-                userNode.child("control").child("toggle_pi_armed").setValue(false);
                 userNode.child("camera").child("photo_pipeline_state").setValue(0);
                 // TODO: decide how sound communication is structured
                 userNode.child("sound").child("done_uploading_new").setValue(false);
