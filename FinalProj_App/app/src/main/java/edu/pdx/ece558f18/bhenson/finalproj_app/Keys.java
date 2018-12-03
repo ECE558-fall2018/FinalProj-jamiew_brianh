@@ -15,8 +15,13 @@ public class Keys {
     public static final String KEY_AUTOLOGIN = PACKAGE + "autologin";
     public static final String KEY_ISCONNECTED = PACKAGE + "isconnected";
 
+    public static final String FILE_SMALL = "img_0640x0480.jpg";
+    public static final String FILE_MED =   "img_1800x1200.jpg";
+    public static final String FILE_BIG =   "img_3200x2400.jpg";
+    public static final String DIR_PUBLIC = "SecurityApp";
 
-
+    public static final int MAX_RETRY_CT = 4;
+    public static final int WRITE_PERMISSIONS_REQ_CODE = 12345;
 
     public static final Boolean DEFAULT_AUTOLOGIN = true;
 

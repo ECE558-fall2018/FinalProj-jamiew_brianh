@@ -2,6 +2,7 @@ package edu.pdx.ece558f18.bhenson.finalproj_app;
 
 import android.content.Context;
 import android.content.Intent;
+import android.content.pm.PackageManager;
 import android.net.Uri;
 import android.os.Bundle;
 import android.support.annotation.NonNull;
@@ -115,6 +116,31 @@ public class PagerActivity extends AppCompatActivity
     @Override
     public void onFragmentInteraction(Uri uri) {
         // stub
+    }
+
+    @Override
+    public void onRequestPermissionsResult(int requestCode, @NonNull String permissions[], @NonNull int[] grantResults) {
+        switch (requestCode) {
+            case Keys.WRITE_PERMISSIONS_REQ_CODE: {
+                // If request is cancelled, the result arrays are empty.
+                if (grantResults.length > 0 && grantResults[0] == PackageManager.PERMISSION_GRANTED) {
+                    // permission was granted, yay! Proceed with the thing
+                    Log.d(TAG, "permission accepted");
+                    if(mSectionsPagerAdapter.getRegisteredFragment(2) != null) {
+                        ((CameraFragment) mSectionsPagerAdapter.getRegisteredFragment(2)).triggerDownload();
+                    }
+                } else {
+                    // permission denied, boo!
+                    // do nothing I suppose
+                    Log.d(TAG, "permission denied");
+                }
+                return;
+            }
+
+            // other 'case' lines to check for other
+            // permissions this app might request.
+        }
+
     }
 
     @Override

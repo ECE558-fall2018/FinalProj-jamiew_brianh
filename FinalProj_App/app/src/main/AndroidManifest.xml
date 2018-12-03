@@ -1,7 +1,9 @@
 <?xml version="1.0" encoding="utf-8"?>
 <manifest xmlns:android="http://schemas.android.com/apk/res/android"
+          xmlns:tools="http://schemas.android.com/tools"
           package="edu.pdx.ece558f18.bhenson.finalproj_app">
 
+    <uses-permission android:name="android.permission.WRITE_EXTERNAL_STORAGE" tools:node="replace"/>
     <application
             android:allowBackup="true"
             android:icon="@mipmap/ic_launcher"
@@ -9,8 +11,11 @@
             android:roundIcon="@mipmap/ic_launcher_round"
             android:supportsRtl="true"
             android:theme="@style/AppTheme">
+
         <activity
                 android:name=".LoginActivity"
+                android:configChanges="orientation"
+                android:screenOrientation="portrait"
                 android:label="@string/title_activity_login"
                 android:theme="@style/AppTheme.NoActionBar">
             <intent-filter>
@@ -22,6 +27,8 @@
         <activity
                 android:name=".PagerActivity"
                 android:label="@string/title_activity_pager"
+                android:configChanges="orientation"
+                android:screenOrientation="portrait"
                 android:theme="@style/AppTheme.NoActionBar">
         </activity>
 

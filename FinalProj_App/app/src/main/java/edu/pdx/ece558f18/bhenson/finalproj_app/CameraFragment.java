@@ -1,23 +1,37 @@
 package edu.pdx.ece558f18.bhenson.finalproj_app;
 
+import android.Manifest;
 import android.content.Context;
-import android.content.res.AssetManager;
+import android.content.pm.PackageManager;
 import android.graphics.BitmapFactory;
 import android.net.Uri;
 import android.os.Bundle;
+import android.os.Environment;
 import android.support.annotation.NonNull;
+import android.support.v4.app.ActivityCompat;
 import android.support.v4.app.Fragment;
+import android.support.v4.content.ContextCompat;
 import android.util.Log;
 import android.view.LayoutInflater;
 import android.view.View;
 import android.view.ViewGroup;
 import android.widget.Button;
 import android.widget.ImageView;
+import android.widget.Toast;
+import com.google.android.gms.tasks.OnFailureListener;
+import com.google.android.gms.tasks.OnSuccessListener;
 import com.google.firebase.auth.FirebaseAuth;
 import com.google.firebase.database.*;
+import com.google.firebase.storage.FirebaseStorage;
+import com.google.firebase.storage.StorageReference;
 
-import java.io.*;
-import java.util.Arrays;
+import java.io.File;
+import java.io.FileNotFoundException;
+import java.io.FileOutputStream;
+import java.io.IOException;
+import java.text.SimpleDateFormat;
+import java.util.Date;
+import java.util.Locale;
 
 
 /**
@@ -30,6 +44,7 @@ import java.util.Arrays;
  */
 public class CameraFragment extends Fragment {
     public static final String TAG = "SEC_CameraFragment";
+    public static final long TWO_MEGABYTE = 1024 * 1024 * 2;
 
     private CameraFragmentListener mListener;
     private boolean mIsConnected = false;
@@ -41,10 +56,8 @@ public class CameraFragment extends Fragment {
     private Button mButtSave;
     private FirebaseAuth mAuth;
     private DatabaseReference mMyDatabase;
-
-
-    // TODO: pretty much everything in this file
-
+    private StorageReference mMyImages;
+    private int mAttemptCount;
 
 
     public CameraFragment() {
@@ -77,6 +90,7 @@ public class CameraFragment extends Fragment {
             Log.d(TAG, "somehow lost login credentials!");
         }
         mMyDatabase = FirebaseDatabase.getInstance().getReference().child("users").child(mAuth.getCurrentUser().getUid());
+        mMyImages = FirebaseStorage.getInstance().getReference().child("users").child(mAuth.getCurrentUser().getUid());
     }
 
     @Override
@@ -92,34 +106,38 @@ public class CameraFragment extends Fragment {
         mButtVoip = (Button) v.findViewById(R.id.butt_voip);
         mButtSave = (Button) v.findViewById(R.id.butt_save);
 
-        // TODO: load the imageview with the last image I saved (should exist in local storage) or if there is none then leave blank
+//        try {
+//            Log.d(TAG, "assets are " + Arrays.toString(getContext().getAssets().list("")));
+//
+//            // first, read what i put in the assets folder
+//            InputStream i = getContext().getAssets().open("test_1800x1200.jpg", AssetManager.ACCESS_BUFFER);
+//            int size = i.available();
+//            byte[] buffer = new byte[size];
+//            i.read(buffer);
+//            i.close();
+//
+//            // then write that file into the local storage
+//            FileOutputStream outputStream = getContext().openFileOutput(Keys.FILE_MED, Context.MODE_PRIVATE);
+//            outputStream.write(buffer);
+//            outputStream.close();
+//        } catch (FileNotFoundException fnfe) {
+//            Log.d(TAG, "fnfe exception1", fnfe);
+//        } catch (IOException ioe) {
+//            Log.d(TAG, "io exception1", ioe);
+//        }
 
 
-        // NOTE: this is for debug/practice only
-        try {
-            Log.d(TAG, "assets are " + Arrays.toString(getContext().getAssets().list("")));
 
-            // first, read what i put in the assets folder
-            InputStream i = getContext().getAssets().open("test_1800x1200.jpg", AssetManager.ACCESS_BUFFER);
-            int size = i.available();
-            byte[] buffer = new byte[size];
-            i.read(buffer);
-            i.close();
-
-            // then write that file into the local storage
-            FileOutputStream outputStream = getContext().openFileOutput("test_1800x1200.jpg", Context.MODE_PRIVATE);
-            outputStream.write(buffer);
-            outputStream.close();
-        } catch (FileNotFoundException fnfe) {
-            Log.d(TAG, "fnfe exception1", fnfe);
-        } catch (IOException ioe) {
-            Log.d(TAG, "io exception1", ioe);
+        // load the imageview with the last image I saved (should exist in local storage) or if there is none then leave blank
+        // set up pointer to the small file location
+        File file = new File(getContext().getFilesDir(), Keys.FILE_SMALL);
+        if(file.exists()) {
+            // pipe it into the image view
+            Log.d(TAG, "initializing imageview with picture from " + file.getAbsolutePath());
+            mImageView.setImageBitmap(BitmapFactory.decodeFile(file.getAbsolutePath()));
         }
 
-        // read taht file I just wrote
-        File file = new File(getContext().getFilesDir(), "test_1800x1200.jpg");
-        // pipe it into the image view
-        mImageView.setImageBitmap(BitmapFactory.decodeFile(file.getAbsolutePath()));
+
 
 
         // attach listeners to the buttons
@@ -132,14 +150,7 @@ public class CameraFragment extends Fragment {
         // attach the onValueChanged listener
         mMyDatabase.child("camera").child("photo_pipeline_state").addValueEventListener(mOnCameraStateChangeListener);
 
-
-
-
         // TODO: more init? idk
-
-
-
-
 
 
         setPiConnection(mIsConnected);
@@ -170,16 +181,159 @@ public class CameraFragment extends Fragment {
         mIsConnected = b;
     }
 
-//    View.OnClickListener mSaveClick = new View.OnClickListener() {
-//        @Override public void onClick(View v) {
-//            // consider deleting this?
-//        }
-//    };
+
+    private void beginDownloadSmallImage(String s) {
+        final String sf = s;
+        Log.d(TAG, "beginning to download " + mMyImages.child(sf).getPath());
+
+        // this whole thing runs asynchronously
+        mMyImages.child(sf).getBytes(TWO_MEGABYTE).addOnSuccessListener(new OnSuccessListener<byte[]>() {
+            @Override
+            public void onSuccess(byte[] bytes) {
+                // Data for "images/island.jpg" is returned, use this as needed
+                Log.d(TAG, "done downloading lores image, size = " + bytes.length);
+
+                // part 1: save it into local storage
+                try {
+                    FileOutputStream outputStream = getContext().openFileOutput(sf, Context.MODE_PRIVATE);
+                    outputStream.write(bytes);
+                    outputStream.close();
+                } catch (FileNotFoundException fnfe) {
+                    Log.d(TAG, "fnfe exception1", fnfe);
+                } catch (IOException ioe) {
+                    Log.d(TAG, "io exception1", ioe);
+                }
+
+                // part 2: display on imageview
+                mImageView.setImageBitmap(BitmapFactory.decodeByteArray(bytes, 0, bytes.length));
+
+                // part 3: enable buttons (if connected)
+                if (mIsConnected) { mButtManual.setEnabled(true);mButtHires.setEnabled(true); }
+                // part 4: move to next camera state
+                mMyDatabase.child("camera").child("photo_pipeline_state").setValue(3);
+                // on success, reset the # of attempts
+                mAttemptCount = 0;
+            }
+        }).addOnFailureListener(new OnFailureListener() {
+            @Override
+            public void onFailure(@NonNull Exception e) {
+                // Handle any errors
+                Log.d(TAG, "failed to download lores image", e);
+                mAttemptCount += 1;
+                if(mAttemptCount > Keys.MAX_RETRY_CT) {
+                    Log.d(TAG, "repeatedly failed to download lores image, now giving up");
+                    // toast
+                    Toast.makeText(getContext(), getString(R.string.small_file_giveup_toast), Toast.LENGTH_SHORT).show();
+                    // part 3: enable buttons (if connected)
+                    if (mIsConnected) { mButtManual.setEnabled(true);mButtHires.setEnabled(true); }
+                    // part 4: move to next camera state
+                    mMyDatabase.child("camera").child("photo_pipeline_state").setValue(3);
+                    // on giving up, reset the # of attempts
+                    mAttemptCount = 0;
+                } else {
+                    // toast?
+                    Toast.makeText(getContext(), getString(R.string.small_file_fail_toast), Toast.LENGTH_SHORT).show();
+                    // retry
+                    beginDownloadSmallImage(sf);
+                }
+            }
+        });
+    }
+
+
+    private void beginDownloadBigImage(String s) {
+        final String sf = s;
+        Log.d(TAG, "beginning to download " + mMyImages.child(sf).getPath());
+
+        // this whole thing runs asynchronously
+        mMyImages.child(sf).getBytes(TWO_MEGABYTE).addOnSuccessListener(new OnSuccessListener<byte[]>() {
+            @Override
+            public void onSuccess(byte[] bytes) {
+                // Data for "images/island.jpg" is returned, use this as needed
+                Log.d(TAG, "done downloading hires image, size = " + bytes.length);
+
+                // part 1: save it into external storage
+                Date dNow = new Date();
+                SimpleDateFormat ft = new SimpleDateFormat("yyMMddhhmmssMs", Locale.US);
+                String newfilename = ft.format(dNow) + ".jpg";
+                try {
+                    File f = new File(getPublicPicturesDir(), newfilename);
+                    Log.d(TAG, "saving hires file to " + f.getAbsolutePath());
+                    FileOutputStream outputStream = new FileOutputStream(f);
+                    outputStream.write(bytes);
+                    outputStream.close();
+                    // part 2: create toast with the file name I used
+                    Toast.makeText(getContext(), getString(R.string.new_file_toast, newfilename), Toast.LENGTH_SHORT).show();
+                } catch (FileNotFoundException fnfe) {
+                    Log.d(TAG, "fnfe exception2", fnfe);
+                    Toast.makeText(getContext(), getString(R.string.error), Toast.LENGTH_SHORT).show();
+                } catch (IOException ioe) {
+                    Log.d(TAG, "io exception2", ioe);
+                    Toast.makeText(getContext(), getString(R.string.error), Toast.LENGTH_SHORT).show();
+                }
+
+                // part 3: enable buttons (if connected)
+                if (mIsConnected) { mButtManual.setEnabled(true);mButtHires.setEnabled(true); }
+                // part 4: move to next camera state
+                mMyDatabase.child("camera").child("photo_pipeline_state").setValue(3);
+                // on success, reset the # of attempts
+                mAttemptCount = 0;
+            }
+        }).addOnFailureListener(new OnFailureListener() {
+            @Override
+            public void onFailure(@NonNull Exception e) {
+                // Handle any errors
+                Log.d(TAG, "failed to download hires image", e);
+                mAttemptCount += 1;
+                if(mAttemptCount > Keys.MAX_RETRY_CT) {
+                    Log.d(TAG, "repeatedly failed to download lores image, now giving up");
+                    // toast?
+                    Toast.makeText(getContext(), getString(R.string.big_file_giveup_toast), Toast.LENGTH_SHORT).show();
+                    // part 3: enable buttons (if connected)
+                    if (mIsConnected) { mButtManual.setEnabled(true);mButtHires.setEnabled(true); }
+                    // part 4: move to next camera state
+                    mMyDatabase.child("camera").child("photo_pipeline_state").setValue(3);
+                    // on giving up, reset the # of attempts
+                    mAttemptCount = 0;
+                } else {
+                    // toast
+                    Toast.makeText(getContext(), getString(R.string.big_file_fail_toast), Toast.LENGTH_SHORT).show();
+                    // retry
+                    beginDownloadBigImage(sf);
+                }
+            }
+        });
+    }
+
+
+
+
+    public File getPublicPicturesDir() {
+        // Get the directory for the user's public pictures directory.
+        File file = new File(Environment.getExternalStoragePublicDirectory(Environment.DIRECTORY_PICTURES), Keys.DIR_PUBLIC);
+        Log.d(TAG, "base dir exists:" + Environment.getExternalStoragePublicDirectory(Environment.DIRECTORY_PICTURES).exists());
+        Log.d(TAG, "my dir exists:" + file.exists());
+        Log.d(TAG, "external storage is writable: " + isExternalStorageWritable());
+        if (!file.mkdirs()) {
+            Log.d(TAG, "Photos directory not created, " + file.getAbsolutePath());
+        }
+        return file;
+    }
+
+
+    public boolean isExternalStorageWritable() {
+        String state = Environment.getExternalStorageState();
+        if (Environment.MEDIA_MOUNTED.equals(state)) {
+            return true;
+        }
+        return false;
+    }
+
 
     View.OnClickListener mVoipClick = new View.OnClickListener() {
         @Override public void onClick(View v) {
             // use the same listener but either start/end call depending on state variables
-            // TODO
+            // TODO: everything to do with VOIP
             // NOTE: one thing to be done in the pager activity is, if the page is changed while in a call, end it
         }
     };
@@ -195,10 +349,26 @@ public class CameraFragment extends Fragment {
     View.OnClickListener mHiresPhotoRequest = new View.OnClickListener() {
         @Override public void onClick(View v) {
             // to request a download of the hires image, simply move to state 4
-            mMyDatabase.child("camera").child("photo_pipeline_state").setValue(4);
+            if(ContextCompat.checkSelfPermission(getActivity(), Manifest.permission.WRITE_EXTERNAL_STORAGE) != PackageManager.PERMISSION_GRANTED) {
+                Log.d(TAG, "need to request write permissions");
+
+                ActivityCompat.requestPermissions(getActivity(),
+                        new String[]{Manifest.permission.WRITE_EXTERNAL_STORAGE},
+                        Keys.WRITE_PERMISSIONS_REQ_CODE);
+
+                // the result is returned to onRequestPermissionsResult on the activity level
+
+            } else {
+                // if I do somehow have permission, then do the thing right now
+                triggerDownload();
+            }
         }
     };
 
+    public void triggerDownload() {
+        // set state to 4 to begin the download operation
+        mMyDatabase.child("camera").child("photo_pipeline_state").setValue(4);
+    }
 
     private ValueEventListener mOnCameraStateChangeListener = new ValueEventListener() {
         @Override public void onDataChange(@NonNull DataSnapshot ds) {
@@ -239,6 +409,7 @@ public class CameraFragment extends Fragment {
                     // display on imageview
                     // enable both buttons at the end (if connected to Pi)
                     // write state 3 to the database when i'm done with all this
+                    beginDownloadSmallImage(Keys.FILE_SMALL);
                     break;
                 case 3:
                     // system is idle, done downloading & showing the lowres version... pi has a hires version available to upload when requested
@@ -269,6 +440,7 @@ public class CameraFragment extends Fragment {
                     // create toast saying what file name was used
                     // enable both buttons at the end
                     // write state 3 to the database when i'm done with all this
+                    beginDownloadBigImage(Keys.FILE_MED);
                     break;
                 default:
                     Log.d(TAG, "somehow got an invalid camera state, " + state);
@@ -310,8 +482,8 @@ public class CameraFragment extends Fragment {
     public interface CameraFragmentListener {
         // TODO: Update argument type and name
         void onFragmentInteraction(Uri uri);
+        void onRequestPermissionsResult(int requestCode, String permissions[], int[] grantResults);
     }
-
     // ===========================================================================================================
     // override critical lifecycle functions, mostly for logging
 

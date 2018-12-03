@@ -13,7 +13,7 @@
         <!-- The image should always have 640::480 aspect ratio, whatever its actual resolution is -->
         <ImageView
                 android:src="@drawable/no_image_640x480"
-                android:layout_width="wrap_content"
+                android:layout_width="match_parent"
                 android:layout_height="wrap_content"
                 android:scaleType="fitXY"
                 android:adjustViewBounds="true"
