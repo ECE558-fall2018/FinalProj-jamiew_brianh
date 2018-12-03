@@ -183,13 +183,14 @@ public class CameraFragment extends Fragment {
         mIsConnected = b;
     }
 
-
     private void displayImage(byte[] bytes) {
         mImageView.setImageBitmap(BitmapFactory.decodeByteArray(bytes, 0, bytes.length));
     }
+
     private void displayImage(String filename) {
         mImageView.setImageBitmap(BitmapFactory.decodeFile(filename));
     }
+
     private boolean saveImageToLocal(String name, byte[] bytes) {
         // return false if everything is OK
         // return true if there was some exception
@@ -236,6 +237,7 @@ public class CameraFragment extends Fragment {
             return true;
         }
     }
+
 
     private void beginDownloadSmallImage(String s) {
         final String sf = s;
@@ -335,8 +337,6 @@ public class CameraFragment extends Fragment {
             }
         });
     }
-
-
 
 
     public File getPublicPicturesDir() {
