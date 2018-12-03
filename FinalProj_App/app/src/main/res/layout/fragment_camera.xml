@@ -25,15 +25,6 @@
                 android:layout_height="wrap_content"
                 android:id="@+id/butt_manual_capture"/>
         <Button
-                android:text="@string/save_image_label"
-                android:layout_width="match_parent"
-                android:layout_height="wrap_content"
-                android:id="@+id/butt_save"/>
-        <TextView
-                android:layout_width="match_parent"
-                android:layout_height="wrap_content"
-                android:text="@string/hello_blank_fragment"/>
-        <Button
                 android:text="@string/download_hires_label"
                 android:layout_width="match_parent"
                 android:layout_height="wrap_content"
@@ -43,6 +34,15 @@
                 android:layout_width="match_parent"
                 android:layout_height="wrap_content"
                 android:id="@+id/butt_voip"/>
+        <TextView
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:text="@string/hello_blank_fragment"/>
+        <Button
+                android:text="@string/save_image_label"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:id="@+id/butt_save"/>
     </LinearLayout>
 
 </FrameLayout>
