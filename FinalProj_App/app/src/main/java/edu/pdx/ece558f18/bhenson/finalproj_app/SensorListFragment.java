@@ -5,10 +5,14 @@ import android.net.Uri;
 import android.os.Bundle;
 import android.support.annotation.NonNull;
 import android.support.v4.app.Fragment;
+import android.support.v7.widget.LinearLayoutManager;
+import android.support.v7.widget.RecyclerView;
 import android.util.Log;
 import android.view.LayoutInflater;
 import android.view.View;
 import android.view.ViewGroup;
+import android.widget.Spinner;
+import android.widget.TextView;
 
 
 /**
@@ -25,6 +29,11 @@ public class SensorListFragment extends Fragment {
 
     private boolean mIsConnected;
 
+
+    private RecyclerView mRecyclerView;
+    private MyAdapter mAdapter;
+
+    private SensorListObj mSensorListObj;
 
     // TODO: pretty much everything in this file
 
@@ -60,9 +69,17 @@ public class SensorListFragment extends Fragment {
 
     @Override
     public View onCreateView(@NonNull LayoutInflater inflater, ViewGroup container, Bundle savedInstanceState) {
+        Log.d(TAG, "onCreateView(...)");
         // Inflate the layout for this fragment
         View v = inflater.inflate(R.layout.fragment_sensor_list, container, false);
 
+        mRecyclerView = (RecyclerView) v.findViewById(R.id.recycler_view);
+        mRecyclerView.setLayoutManager(new LinearLayoutManager(getActivity()));
+        mAdapter = new MyAdapter();
+        mRecyclerView.setAdapter(mAdapter);
+        // note: change the adapter each time the UI updates? what does that mean?
+
+        mSensorListObj = new SensorListObj(10);
 
         setPiConnection(mIsConnected);
         return v;
@@ -79,29 +96,63 @@ public class SensorListFragment extends Fragment {
 
 
 
-    // TODO: Rename method, update argument and hook method into UI event
-    public void onButtonPressed(Uri uri) {
-        if (mListener != null) {
-            //mListener.onFragmentInteraction(uri);
+
+
+
+
+
+    public class MyViewHolder extends RecyclerView.ViewHolder implements View.OnClickListener {
+        public TextView mTv;
+        public Spinner mSpinner;
+        public int mPosition;
+
+        public MyViewHolder(View v) {
+            // this is basically onCreate
+            super(v);
+            mTv = (TextView) v.findViewById(R.id.tv_gpio_name);
+            mSpinner = (Spinner) v.findViewById(R.id.spinner_gpio_state);
+            // set listener for the spinner value change
+            //v.setOnClickListener(this);
+        }
+        public void Bind(int position) {
+            // this is basically onCreateView
+//            String title = mBookTitles[position];
+//            mTitleTextView.setText(title);
+            mPosition = position;
+            mTv.setText(mSensorListObj.mNameList[position]);
+            mSpinner.setSelection(mSensorListObj.mTypeList[position]);
+        }
+        @Override
+        public void onClick(View v) {
+            // Get parent Activity and send notification
+//            OnSelectedBookChangeListener listener = (OnSelectedBookChangeListener) getActivity();
+//            listener.onSelectedBookChanged(mPosition);
         }
     }
 
-    @Override
-    public void onAttach(Context context) {
-        super.onAttach(context);
-        if (context instanceof SensorListFragmentListener) {
-            mListener = (SensorListFragmentListener) context;
-        } else {
-            throw new RuntimeException(context.toString()
-                    + " must implement ControlFragmentListener");
+    public class MyAdapter extends RecyclerView.Adapter<MyViewHolder> {
+        @Override
+        public @NonNull MyViewHolder onCreateViewHolder(@NonNull ViewGroup parent, int viewType) {
+            LayoutInflater li = LayoutInflater.from(getActivity());
+            View v = li.inflate(R.layout.sensor_layout, parent, false);
+            return new MyViewHolder(v);
+        }
+        @Override
+        public void onBindViewHolder(@NonNull MyViewHolder holder, int position) {
+            holder.Bind(position);
+        }
+        @Override
+        public int getItemCount() {
+            return mSensorListObj.mNameList.length;
         }
     }
 
-    @Override
-    public void onDetach() {
-        super.onDetach();
-        mListener = null;
-    }
+
+
+
+
+
+    // ===========================================================================================================
 
     /**
      * This interface must be implemented by activities that contain this
@@ -117,4 +168,53 @@ public class SensorListFragment extends Fragment {
         // TODO: Update argument type and name
         void onFragmentInteraction(Uri uri);
     }
+
+    // ===========================================================================================================
+    // override critical lifecycle functions, mostly for logging
+
+
+    @Override
+    public void onAttach(Context context) {
+        super.onAttach(context);
+        Log.d(TAG, "onAttach(context)");
+        if (context instanceof SensorListFragmentListener) {
+            mListener = (SensorListFragmentListener) context;
+        } else {
+            throw new RuntimeException(context.toString() + " must implement ControlFragmentListener");
+        }
+    }
+
+    @Override
+    public void onDetach() {
+        super.onDetach();
+        mListener = null;
+        Log.d(TAG, "onDetatch()");
+
+    }
+    @Override
+    public void onStart() {
+        super.onStart();
+        Log.d(TAG, "onStart()");
+    }
+    @Override
+    public void onStop() {
+        super.onStop();
+        Log.d(TAG, "onStop()");
+    }
+    @Override
+    public void onDestroy() {
+        super.onDestroy();
+        Log.d(TAG, "onDestroy()");
+    }
+    @Override
+    public void onPause() {
+        super.onPause();
+        Log.d(TAG, "onPause()");
+    }
+    @Override
+    public void onResume() {
+        super.onResume();
+        Log.d(TAG, "onResume()");
+    }
+
 }
