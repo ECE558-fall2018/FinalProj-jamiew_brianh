@@ -132,7 +132,7 @@ public class ControlFragment extends Fragment {
 
     // sets the buttons and whatnot to be enabled/disabled as appropriate
     public void setPiConnection(boolean b) {
-
+        Log.d(TAG, "pi_connected state changed, now " + b);
         if(b) {
             mToggle.setEnabled(true);
             mStatus.setText(R.string.status_connected);
