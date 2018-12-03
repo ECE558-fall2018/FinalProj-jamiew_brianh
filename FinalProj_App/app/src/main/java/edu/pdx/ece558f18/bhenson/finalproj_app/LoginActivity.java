@@ -185,7 +185,6 @@ public class LoginActivity extends AppCompatActivity {
                 // dont need to create email or apptoken, those created below
                 //userNode.child(Keys.DB_EMAIL);
                 //userNode.child(Keys.DB_APPTOKEN);
-                // TODO: replace these with constants in Keys file
                 userNode.child(Keys.DB_TIMESTAMP).setValue("err");
                 userNode.child(Keys.DB_ARMED).setValue(false);
                 userNode.child(Keys.DB_TRIGGERED).setValue(false);
