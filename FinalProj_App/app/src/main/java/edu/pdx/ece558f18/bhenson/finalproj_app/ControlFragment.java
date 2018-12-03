@@ -106,12 +106,10 @@ public class ControlFragment extends Fragment {
         mCheckBox.setChecked(prefs.getBoolean(Keys.KEY_AUTOLOGIN, Keys.DEFAULT_AUTOLOGIN));
 
 
-        // armtoggle initial value, from database
-        // timeout initial value, from database
+        // get initial values for armtoggle and timeout from database
         mMyDatabase.addListenerForSingleValueEvent(mInitValuesListener);
 
-
-
+        mMyDatabase.child("pi_armed").addValueEventListener(mArmedChangedListener);
 
 
         // attach listeners here
@@ -144,6 +142,21 @@ public class ControlFragment extends Fragment {
     }
 
 
+    private ValueEventListener mArmedChangedListener = new ValueEventListener() {
+        @Override public void onDataChange(@NonNull DataSnapshot ds) {
+            Log.d(TAG, "armed value changed");
+            try {
+                mToggle.setChecked(ds.getValue(Boolean.class));
+            } catch (NullPointerException npe) {
+                Log.d(TAG, "error: bad data when getting initial values", npe);
+                return;
+            }
+        }
+        @Override public void onCancelled(@NonNull DatabaseError de) {
+            // Failed to read value, not sure how or what to do about it
+            Log.d(TAG, "firebase error: failed to get snapshot??", de.toException());
+        }
+    };
 
     private ValueEventListener mInitValuesListener = new ValueEventListener() {
         @Override public void onDataChange(@NonNull DataSnapshot ds) {
