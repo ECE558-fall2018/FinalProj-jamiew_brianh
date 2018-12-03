@@ -15,16 +15,9 @@ in the app-level build.gradle file, I added under dependencies:
     implementation 'com.fasterxml.jackson.core:jackson-databind:2.9.7'
 */
 public class SensorListObj implements java.io.Serializable {
-//    public class SensorObj implements java.io.Serializable {
-//        public String gpio_name = "";
-//        public int sensor_type = 0;
-//        // for each GPIO, there a 3 possible states: 0=disconnected, 1=door sensor, 2=vibration sensor
-//        public SensorObj() {}
-//        public SensorObj(String s, int i) { gpio_name = s;sensor_type = i; }
-//    }
-
     public String[] mNameList;
     public int[] mTypeList;
+    // for each GPIO, there are 3 possible states: 0=disconnected, 1=contact sensor, 2=vibration sensor
 
     public SensorListObj() {}
 
