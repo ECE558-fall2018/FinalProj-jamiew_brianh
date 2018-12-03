@@ -21,6 +21,7 @@ public class SensorListObj implements java.io.Serializable {
 
     public SensorListObj() {}
 
+    // create object with given size
     public SensorListObj(int number) {
         mNameList = new String[number];
         mTypeList = new int[number];
@@ -30,6 +31,19 @@ public class SensorListObj implements java.io.Serializable {
         }
     }
 
+    // copy constructor
+    public SensorListObj(SensorListObj slo) {
+        int s = slo.mNameList.length;
+        mNameList = new String[s];
+        mTypeList = new int[s];
+        for(int i = 0; i < s; i++) {
+            // doesn't matter if the strings are both pointing to the same memory, they don't change so that's fine
+            mNameList[i] = slo.mNameList[i];
+            mTypeList[i] = slo.mTypeList[i];
+        }
+    }
+
+    // create object from json string
     public SensorListObj(String json) {
         ObjectMapper mapper = new ObjectMapper();
         SensorListObj slo = new SensorListObj();
@@ -46,8 +60,9 @@ public class SensorListObj implements java.io.Serializable {
         }
     }
 
-    @Override
-    public String toString() {
+
+    // create json string from object
+    @Override public String toString() {
         ObjectMapper mapper = new ObjectMapper();
         try {
             return mapper.writeValueAsString(this);
@@ -65,12 +80,13 @@ public class SensorListObj implements java.io.Serializable {
             SensorListObj slo = (SensorListObj) o;
             if (slo.mNameList.length != mNameList.length) return false;
             for (int i = 0; i < mNameList.length; i++) {
-                if (slo.mNameList[i].equals(mNameList[i])) return false;
+                if (!slo.mNameList[i].equals(mNameList[i])) return false;
             }
             if (slo.mTypeList.length != mTypeList.length) return false;
             for (int i = 0; i < mTypeList.length; i++) {
                 if (slo.mTypeList[i] != mTypeList[i]) return false;
             }
+            //Log.d("SEC_SensrListObj", "return true");
             return true;
         }
     }

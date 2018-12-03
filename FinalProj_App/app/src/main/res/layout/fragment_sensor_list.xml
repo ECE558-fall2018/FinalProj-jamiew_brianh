@@ -51,16 +51,16 @@
                 android:layout_marginEnd="@dimen/activity_horizontal_margin"
                 android:id="@+id/linearLayout">
             <Button
-                    android:text="@string/reset_label"
-                    android:layout_width="wrap_content"
-                    android:layout_height="wrap_content"
-                    android:id="@+id/butt_reset"
-                    android:layout_weight="1"/>
-            <Button
                     android:text="@string/apply_label"
                     android:layout_width="wrap_content"
                     android:layout_height="wrap_content"
                     android:id="@+id/butt_apply"
+                    android:layout_weight="1"/>
+            <Button
+                    android:text="@string/reset_label"
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content"
+                    android:id="@+id/butt_reset"
                     android:layout_weight="1"/>
         </LinearLayout>
     </android.support.constraint.ConstraintLayout>

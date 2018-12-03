@@ -11,10 +11,10 @@ import android.util.Log;
 import android.view.LayoutInflater;
 import android.view.View;
 import android.view.ViewGroup;
-import android.widget.AdapterView;
-import android.widget.ArrayAdapter;
-import android.widget.Spinner;
-import android.widget.TextView;
+import android.widget.*;
+import com.google.firebase.auth.FirebaseAuth;
+import com.google.firebase.database.DatabaseReference;
+import com.google.firebase.database.FirebaseDatabase;
 
 
 /**
@@ -30,16 +30,18 @@ public class SensorListFragment extends Fragment {
     private SensorListFragmentListener mListener;
 
     private boolean mIsConnected;
+    private SensorListObj mSensorListObj_master; // holds the obj i got from the database
+    private SensorListObj mSensorListObj_temp; // the locally-held copy that im modifying
+    private FirebaseAuth mAuth;
+    private DatabaseReference mMyDatabase;
+
 
 
     private RecyclerView mRecyclerView;
     private MyAdapter mAdapter;
 
-    private SensorListObj mSensorListObj_master;
-    private SensorListObj mSensorListObj_temp;
-
-    // TODO: pretty much everything in this file
-
+    private Button mApply;
+    private Button mReset;
 
 
     public SensorListFragment() {
@@ -64,10 +66,14 @@ public class SensorListFragment extends Fragment {
     public void onCreate(Bundle saved) {
         super.onCreate(saved);
         Log.d(TAG, "onCreate(bundle)");
-
         if (getArguments() != null) {
             mIsConnected = getArguments().getBoolean(Keys.KEY_ISCONNECTED);
         }
+        mAuth = FirebaseAuth.getInstance();
+        if(mAuth.getCurrentUser() == null) {
+            Log.d(TAG, "somehow lost login credentials!");
+        }
+        mMyDatabase = FirebaseDatabase.getInstance().getReference().child(Keys.DB_TOPFOLDER).child(mAuth.getCurrentUser().getUid());
     }
 
     @Override
@@ -80,27 +86,66 @@ public class SensorListFragment extends Fragment {
         mRecyclerView.setLayoutManager(new LinearLayoutManager(getActivity()));
         mAdapter = new MyAdapter();
         mRecyclerView.setAdapter(mAdapter);
-        // note: change the adapter each time the UI updates? what does that mean?
 
-        //mAdapter.notifyDataSetChanged();
 
-        mSensorListObj_master = new SensorListObj(10);
-        mSensorListObj_temp = mSensorListObj_master;
+
+        mApply = (Button) v.findViewById(R.id.butt_apply);
+        mReset = (Button) v.findViewById(R.id.butt_reset);
+
+        mApply.setOnClickListener(mApplyListener);
+        mReset.setOnClickListener(mResetListener);
+
+        // TODO: get the sensor object from the database, the list is empty until that happens
+        mSensorListObj_master = new SensorListObj(30);
+        // create the temp as a copy of the master
+        mSensorListObj_temp = new SensorListObj(mSensorListObj_master);
 
         setPiConnection(mIsConnected);
         return v;
+        // TODO: tear out the interface part, since it's unused?
+
+        // TODO: add a "calibrate" button to trigger the range finder setup phase?
     }
 
     // sets the buttons and whatnot to be enabled/disabled as appropriate
     public void setPiConnection(boolean b) {
-        // TODO
-
+        // if _temp and _master are the different, then enable both buttons... otherwise, disable both buttons
+        if(!mSensorListObj_master.equals(mSensorListObj_temp) && b) {
+            mApply.setEnabled(true); mReset.setEnabled(true);
+        } else {
+            mApply.setEnabled(false); mReset.setEnabled(false);
+        }
+        // is there a simple way to disable all of the elements under/inside a view?
+        if(b) {
+            mRecyclerView.setEnabled(true);
+        } else {
+            mRecyclerView.setEnabled(false);
+        }
 
         mIsConnected = b;
     }
 
 
 
+
+    View.OnClickListener mResetListener = new View.OnClickListener() {
+        @Override public void onClick(View v) {
+            // to reset, copy the master back onto the local
+            mSensorListObj_temp = new SensorListObj(mSensorListObj_master);
+            // then update the ui
+            mAdapter.notifyDataSetChanged();
+        }
+    };
+
+    View.OnClickListener mApplyListener = new View.OnClickListener() {
+        @Override public void onClick(View v) {
+            // to apply the changes, first update the master
+            mSensorListObj_master = new SensorListObj(mSensorListObj_temp);
+            // then send the master to the database
+            // remember to .toString() to jsonify it, if I dont the firebase will try to serialize the object and fail cuz its a piece of crap
+            mMyDatabase.child(Keys.DB_SENSOR_CONFIG).setValue(mSensorListObj_master.toString());
+        }
+    };
 
 
 
@@ -118,22 +163,24 @@ public class SensorListFragment extends Fragment {
             super(v);
             mTv = (TextView) v.findViewById(R.id.tv_gpio_name);
             mSpinner = (Spinner) v.findViewById(R.id.spinner_gpio_state);
-            // TODO: set the displayed contents of the spinner
 
-            // Create an ArrayAdapter using the string array and a default spinner layout
-            ArrayAdapter<CharSequence> adapter = ArrayAdapter.createFromResource(getContext(),
-                    R.array.sensor_types_array, android.R.layout.simple_spinner_item);
-            // Specify the layout to use when the list of choices appears
-            adapter.setDropDownViewResource(android.R.layout.simple_spinner_dropdown_item);
-            // Apply the adapter to the spinner
-            mSpinner.setAdapter(adapter);
+            // set the displayed contents of the spinner
+            try {
+                // Create an ArrayAdapter using the string array and a default spinner layout
+                ArrayAdapter<CharSequence> adapter = ArrayAdapter.createFromResource(getContext(),
+                        R.array.sensor_types_array, android.R.layout.simple_spinner_item);
+                // Specify the layout to use when the list of choices appears
+                adapter.setDropDownViewResource(android.R.layout.simple_spinner_dropdown_item);
+                // Apply the adapter to the spinner
+                mSpinner.setAdapter(adapter);
+            } catch (NullPointerException npe) {
+                Log.d(TAG, "somehow lost my context", npe);
+            }
             // set listener for the spinner value change
             mSpinner.setOnItemSelectedListener(this);
         }
         public void Bind(int position) {
             // this is basically onCreateView
-//            String title = mBookTitles[position];
-//            mTitleTextView.setText(title);
             mPosition = position;
             mTv.setText(mSensorListObj_temp.mNameList[position]);
             mSpinner.setSelection(mSensorListObj_temp.mTypeList[position]);
@@ -143,9 +190,13 @@ public class SensorListFragment extends Fragment {
         public void onItemSelected(AdapterView<?> parent, View view, int position, long id) {
             Log.d(TAG, "entry " + mPosition + " changed to " + position);
             // if something was selected, then change what's held in mSensorListObj_temp to match
-            // if _temp and _master are the same, then disable both buttons
-            // if they are different, then enable both buttons
-
+            mSensorListObj_temp.mTypeList[mPosition] = position;
+            // if _temp and _master are the different, then enable both buttons... otherwise, disable both buttons
+            if(mIsConnected && !mSensorListObj_master.equals(mSensorListObj_temp)) {
+                mApply.setEnabled(true); mReset.setEnabled(true);
+            } else {
+                mApply.setEnabled(false); mReset.setEnabled(false);
+            }
         }
 
         @Override
@@ -190,7 +241,6 @@ public class SensorListFragment extends Fragment {
      * >Communicating with Other Fragments</a> for more information.
      */
     public interface SensorListFragmentListener {
-        // TODO: Update argument type and name
         void onFragmentInteraction(Uri uri);
     }
 
