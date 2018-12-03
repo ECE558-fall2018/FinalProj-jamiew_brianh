@@ -140,6 +140,7 @@ public class ControlFragment extends Fragment {
             mToggle.setEnabled(false);
             mStatus.setText(R.string.status_disconnected);
         }
+        mIsConnected = b;
     }
 
 

@@ -71,6 +71,9 @@ public class SensorListFragment extends Fragment {
     // sets the buttons and whatnot to be enabled/disabled as appropriate
     public void setPiConnection(boolean b) {
         // TODO
+
+
+        mIsConnected = b;
     }
 
 
