@@ -12,18 +12,10 @@
             android:layout_margin="15dp"
             android:orientation="vertical">
         <TextView
+                android:text="@string/error"
                 android:layout_width="match_parent"
                 android:layout_height="wrap_content"
-                android:text="@string/hello_blank_fragment"/>
-        <Button
-                android:text="Button"
-                android:layout_width="match_parent"
-                android:layout_height="wrap_content"
-                android:id="@+id/button2"
-        />
-        <Space
-                android:layout_width="match_parent"
-                android:layout_height="100dp"/>
+                android:id="@+id/tv_connection_status"/>
         <Switch
                 android:layout_width="match_parent"
                 android:layout_height="wrap_content"

@@ -37,7 +37,9 @@
     <string name="autologin_label">Enable Autologin</string>
     <string name="logout_button_label">Logout</string>
     <string name="whoami_label">Logged in as: <b>%1$s</b></string>
-    <string name="timeout_threshold_label">Timeout Threshold\n(minutes)</string>
+    <string name="timeout_threshold_label">Timeout Threshold\n(seconds)</string>
+    <string name="status_connected">Connection status: <b>Normal</b></string>
+    <string name="status_disconnected">Connection status: <b>DISCONNECTED</b></string>
 
 
     <!-- Strings related to fragment 3: camera -->

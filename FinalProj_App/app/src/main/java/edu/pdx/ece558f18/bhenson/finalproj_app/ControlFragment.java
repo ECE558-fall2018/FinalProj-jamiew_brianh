@@ -3,6 +3,7 @@ package edu.pdx.ece558f18.bhenson.finalproj_app;
 import android.content.Context;
 import android.content.SharedPreferences;
 import android.os.Bundle;
+import android.os.Handler;
 import android.support.annotation.NonNull;
 import android.support.v4.app.Fragment;
 import android.util.Log;
@@ -32,8 +33,14 @@ public class ControlFragment extends Fragment {
     private Button mLogout;
     private Switch mToggle;
     private NumberPicker mNumberPicker;
+    private TextView mStatus;
 
     private boolean mIsConnected;
+
+    private Handler mHandler = new Handler();
+
+
+
 
     public ControlFragment() {
         // Required empty public constructor
@@ -81,6 +88,7 @@ public class ControlFragment extends Fragment {
         mCheckBox = (CheckBox) v.findViewById(R.id.cb_autologin);
         mLogout = (Button) v.findViewById(R.id.butt_logout);
         mToggle = (Switch) v.findViewById(R.id.switch_armtoggle);
+        mStatus = (TextView) v.findViewById(R.id.tv_connection_status);
 
         // initialize all UI elements that need it
         // whoami text
@@ -100,9 +108,6 @@ public class ControlFragment extends Fragment {
 
         // armtoggle initial value, from database
         // timeout initial value, from database
-        // both start out disabled until their initial values are gotten
-        mToggle.setEnabled(false);
-        mToggle.setEnabled(false);
         mMyDatabase.addListenerForSingleValueEvent(mInitValuesListener);
 
 
@@ -110,10 +115,10 @@ public class ControlFragment extends Fragment {
 
 
         // attach listeners here
-        // TODO
         mCheckBox.setOnClickListener(checkboxClickListener);
         mLogout.setOnClickListener(logoutButtonListener);
-        // arm/disarm
+        mToggle.setOnClickListener(armedClickListener);
+        // TODO
         // timout select
 
         mLogout.requestFocus();
@@ -127,7 +132,14 @@ public class ControlFragment extends Fragment {
 
     // sets the buttons and whatnot to be enabled/disabled as appropriate
     public void setPiConnection(boolean b) {
-        // TODO
+
+        if(b) {
+            mToggle.setEnabled(true);
+            mStatus.setText(R.string.status_connected);
+        } else {
+            mToggle.setEnabled(false);
+            mStatus.setText(R.string.status_disconnected);
+        }
     }
 
 
@@ -141,8 +153,6 @@ public class ControlFragment extends Fragment {
                 // TODO: convert # of seconds back into index
                 mNumberPicker.setValue(2);
 
-                mToggle.setEnabled(true);
-                mNumberPicker.setEnabled(true);
             } catch (NullPointerException npe) {
                 Log.d(TAG, "error: bad data when getting initial values", npe);
                 return;
@@ -154,6 +164,17 @@ public class ControlFragment extends Fragment {
         }
     };
 
+    View.OnClickListener armedClickListener = new View.OnClickListener() {
+        @Override public void onClick(View v) {
+            // send new value to database
+            mMyDatabase.child("pi_armed").setValue( mToggle.isChecked() );
+            // disable, but re-enable after 1 second
+            mToggle.setEnabled(false);
+            mHandler.postDelayed(reEnableToggle, 1000);
+        }
+    };
+
+    private Runnable reEnableToggle = new Runnable() {@Override public void run() { mToggle.setEnabled(true); }};
 
     View.OnClickListener logoutButtonListener = new View.OnClickListener() {
         @Override public void onClick(View v) {

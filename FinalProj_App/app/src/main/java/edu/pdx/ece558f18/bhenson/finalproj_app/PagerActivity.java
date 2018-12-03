@@ -87,16 +87,16 @@ public class PagerActivity extends AppCompatActivity
             Log.d(TAG, "firebase: pi_connected state changed, now " + b);
             mPiIsConnected = b;
             // if the fragments DO exist, then call the functions to enable/disable their buttons
-            if(mSectionsPagerAdapter.exists(0)) {
-                SensorListFragment f = (SensorListFragment) mSectionsPagerAdapter.getItem(0);
+            if(mSectionsPagerAdapter.getRegisteredFragment(0) != null) {
+                SensorListFragment f = (SensorListFragment) mSectionsPagerAdapter.getRegisteredFragment(0);
                 f.setPiConnection(b);
             }
-            if(mSectionsPagerAdapter.exists(1)) {
-                ControlFragment f = (ControlFragment) mSectionsPagerAdapter.getItem(1);
+            if(mSectionsPagerAdapter.getRegisteredFragment(1) != null) {
+                ControlFragment f = (ControlFragment) mSectionsPagerAdapter.getRegisteredFragment(1);
                 f.setPiConnection(b);
             }
-            if(mSectionsPagerAdapter.exists(2)) {
-                CameraFragment f = (CameraFragment) mSectionsPagerAdapter.getItem(2);
+            if(mSectionsPagerAdapter.getRegisteredFragment(2) != null) {
+                CameraFragment f = (CameraFragment) mSectionsPagerAdapter.getRegisteredFragment(2);
                 f.setPiConnection(b);
             }
         }
@@ -139,7 +139,7 @@ public class PagerActivity extends AppCompatActivity
      */
     public class SectionsPagerAdapter extends FragmentPagerAdapter {
         // 1 if it exists, null if it doesnt
-        public SparseArray<Integer> registeredFragments = new SparseArray<Integer>();
+        SparseArray<Fragment> registeredFragments = new SparseArray<Fragment>();
         public final String[] page_titles_short;
 
 
@@ -154,15 +154,16 @@ public class PagerActivity extends AppCompatActivity
         }
 
         @Override public @NonNull Object instantiateItem(@NonNull ViewGroup container, int position) {
-            registeredFragments.put(position, 1);
-            return (Fragment) super.instantiateItem(container, position);
+            Fragment fragment = (Fragment) super.instantiateItem(container, position);
+            registeredFragments.put(position, fragment);
+            return fragment;
         }
         @Override public void destroyItem(@NonNull ViewGroup container, int position, @NonNull Object object) {
             registeredFragments.remove(position);
             super.destroyItem(container, position, object);
         }
         // returns null if it is unregistered, nonnull if it exists
-        public boolean exists(int position) { return (registeredFragments.get(position) != null); }
+        public Fragment getRegisteredFragment(int position) { return registeredFragments.get(position); }
 
         @Override public Fragment getItem(int position) {
             // getItem is called to instantiate the fragment for the given page.
