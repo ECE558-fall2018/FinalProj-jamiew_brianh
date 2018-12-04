@@ -34,7 +34,7 @@ public class Keys {
     public static final String FCM_DISCONNECT_MESSAGE = "Unexpectedly lost connection to base station";
     public static final String KEY_GOTOPAGE = "goto_page";
 
-
+    public static final int SIP_TIMEOUT = 10;
 
     public static final Boolean DEFAULT_AUTOLOGIN = true;
 

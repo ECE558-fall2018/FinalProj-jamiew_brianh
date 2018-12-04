@@ -1,10 +1,13 @@
 package edu.pdx.ece558f18.bhenson.finalproj_app;
 
 import android.Manifest;
+import android.app.PendingIntent;
 import android.content.Context;
+import android.content.Intent;
 import android.content.pm.PackageManager;
 import android.graphics.BitmapFactory;
 import android.net.Uri;
+import android.net.sip.*;
 import android.os.Bundle;
 import android.os.Environment;
 import android.support.annotation.NonNull;
@@ -30,6 +33,7 @@ import java.io.File;
 import java.io.FileNotFoundException;
 import java.io.FileOutputStream;
 import java.io.IOException;
+import java.text.ParseException;
 import java.text.SimpleDateFormat;
 import java.util.Date;
 import java.util.Locale;
@@ -51,15 +55,26 @@ public class CameraFragment extends Fragment {
     private boolean mIsConnected = false;
     private int mCameraState = 0; // not sure this is needed but whatever
     private ImageView mImageView;
+    private ImageView mCallIndicator;
     private Button mButtManual;
     private Button mButtHires;
     private Button mButtVoip;
-    private Button mButtSave;
     private ProgressBar mProgressBar;
+    private ProgressBar mCallProgress;
     private FirebaseAuth mAuth;
     private DatabaseReference mMyDatabase;
     private StorageReference mMyImages;
     private int mAttemptCount;
+
+
+    // voip stuff
+    public SipManager mSipManager = null;
+    public SipProfile mSipProfile = null;
+    public boolean mVoipTalking = false;
+    public SipAudioCall mCall = null;
+    public String mRemoteUri = null;
+
+
 
 
     public CameraFragment() {
@@ -93,6 +108,14 @@ public class CameraFragment extends Fragment {
         }
         mMyDatabase = FirebaseDatabase.getInstance().getReference().child(Keys.DB_TOPFOLDER).child(mAuth.getCurrentUser().getUid());
         mMyImages = FirebaseStorage.getInstance().getReference().child(Keys.STORAGE_TOPFOLDER).child(mAuth.getCurrentUser().getUid());
+
+        if (mSipManager == null) {
+            try {
+                mSipManager = SipManager.newInstance(getContext());
+            } catch (NullPointerException npe) {
+                Log.d(TAG, "somehow lost the context, couldn't create SIP manager");
+            }
+        }
     }
 
     @Override
@@ -103,11 +126,12 @@ public class CameraFragment extends Fragment {
 
         // fill all the UI variables with their objects
         mImageView = (ImageView) v.findViewById(R.id.imageView);
+        mCallIndicator = (ImageView) v.findViewById(R.id.imageView_speaker);
         mButtManual = (Button) v.findViewById(R.id.butt_manual_capture);
         mButtHires = (Button) v.findViewById(R.id.butt_hires);
         mButtVoip = (Button) v.findViewById(R.id.butt_voip);
-        mButtSave = (Button) v.findViewById(R.id.butt_save);
         mProgressBar = (ProgressBar) v.findViewById(R.id.camera_progress);
+        mCallProgress = (ProgressBar) v.findViewById(R.id.call_progress);
 
 //        try {
 //            Log.d(TAG, "assets are " + Arrays.toString(getContext().getAssets().list("")));
@@ -138,7 +162,6 @@ public class CameraFragment extends Fragment {
             if (file.exists()) {
                 // pipe it into the image view
                 Log.d(TAG, "initializing imageview with picture from " + file.getAbsolutePath());
-                // TODO: is it cleaner to have two versions of displayImage or to put a bunch of code here to turn the File into a byte array?
                 displayImage(file.getAbsolutePath());
             }
         } catch (NullPointerException npe) {
@@ -150,12 +173,13 @@ public class CameraFragment extends Fragment {
         mButtManual.setOnClickListener(mManualPhotoRequest);
         mButtHires.setOnClickListener(mHiresPhotoRequest);
         mButtVoip.setOnClickListener(mVoipClick);
+        mButtVoip.setText(R.string.begin_voip_label);
 
 
         // attach the onValueChanged listener
         mMyDatabase.child(Keys.DB_CAMERA_STATE).addValueEventListener(mOnCameraStateChangeListener);
 
-        // TODO: more init? idk
+        // TODO: read database to get remote URI
 
 
         setPiConnection(mIsConnected);
@@ -169,8 +193,8 @@ public class CameraFragment extends Fragment {
     public void setPiConnection(boolean b) {
         Log.d(TAG, "pi_connected state changed, now " + b);
         if(b) {
-            // the voip button gets turned on, no matter what state the camera is in
-            mButtVoip.setEnabled(true);
+            // the voip button gets turned on only if i already know the destination URI
+            if(mRemoteUri != null) mButtVoip.setEnabled(true);
             // the others depend on the state
             if(mCameraState == 0) {
                 mButtManual.setEnabled(true); mButtHires.setEnabled(false);
@@ -187,9 +211,177 @@ public class CameraFragment extends Fragment {
             mButtVoip.setEnabled(false);
             mButtManual.setEnabled(false); mButtHires.setEnabled(false);
             mProgressBar.setVisibility(View.INVISIBLE);
+            mCallProgress.setVisibility(View.INVISIBLE);
         }
         mIsConnected = b;
     }
+
+
+
+    View.OnClickListener mVoipClick = new View.OnClickListener() {
+        @Override public void onClick(View v) {
+            // use the same listener but either start/end call depending on state variables
+            mButtVoip.setEnabled(false);
+            if(!mVoipTalking) {
+                // placing a call:
+                // stage 1: check permissions
+                // todo
+
+
+
+
+
+
+
+
+
+
+
+
+
+                myCreateSipProfile();
+            } else {
+                // hanging up:
+                myEndCall();
+            }
+        }
+    };
+
+    public void myCreateSipProfile() {
+        mCallProgress.setVisibility(View.VISIBLE);
+        mCallProgress.setProgress(20);
+
+        // stage 1: build the profile
+        SipProfile.Builder builder;
+        try {
+            // TODO: my username/domain/password
+            builder = new SipProfile.Builder("username", "domain");
+        } catch (ParseException pe) {
+            Log.d(TAG, "failed to parse the username and domain", pe);
+            mButtVoip.setEnabled(true); mCallProgress.setVisibility(View.INVISIBLE);
+            return;
+        }
+        builder.setPassword("password");
+        mSipProfile = builder.build();
+
+        // stage 2: register the profile
+        Intent intent = new Intent();
+        intent.setAction("android.SipDemo.INCOMING_CALL");
+        PendingIntent pendingIntent = PendingIntent.getBroadcast(getContext(), 0, intent, Intent.FILL_IN_DATA);
+        try {
+            mSipManager.open(mSipProfile, pendingIntent, null);
+        } catch (SipException se) {
+            Log.d(TAG, "some unknown SIP exception when opening", se);
+            mButtVoip.setEnabled(true); mCallProgress.setVisibility(View.INVISIBLE);
+            return;
+        }
+
+        mCallProgress.setProgress(30);
+        // stage 3: wait for registration result
+        try {
+            mSipManager.setRegistrationListener(mSipProfile.getUriString(), new SipRegistrationListener() {
+                @Override public void onRegistering(String localProfileUri) {
+                    //updateStatus("Registering with SIP Server...");
+                    mCallProgress.setProgress(40);
+                }
+                @Override public void onRegistrationFailed(String localProfileUri, int errorCode, String errorMessage) {
+                    //updateStatus("Registration failed.  Please check settings.");
+                    Log.d(TAG, "some error with the registration: " + errorCode + " " + errorMessage);
+                    mButtVoip.setEnabled(true); mCallProgress.setVisibility(View.INVISIBLE);
+                }
+                @Override public void onRegistrationDone(String localProfileUri, long expiryTime) {
+                    myPlaceCall();
+                }
+            });
+        } catch(SipException se) {
+            Log.d(TAG, "some unknown SIP exception when registering", se);
+            mButtVoip.setEnabled(true); mCallProgress.setVisibility(View.INVISIBLE);
+            return;
+        }
+    }
+
+    public void myPlaceCall() {
+        mCallProgress.setProgress(60);
+        try {
+            mCall = mSipManager.makeAudioCall(mSipProfile.getUriString(), mRemoteUri, mAudioCallListener, Keys.SIP_TIMEOUT);
+        } catch (SipException se) {
+            Log.d(TAG, "some unknown SIP exception when placing the call", se);
+        }
+    }
+
+    SipAudioCall.Listener mAudioCallListener = new SipAudioCall.Listener() {
+        @Override public void onCalling(SipAudioCall call) {
+            super.onCalling(call);
+            mCallProgress.setProgress(70);
+        }
+        @Override public void onCallEstablished(SipAudioCall call) {
+            super.onCallEstablished(call);
+            call.startAudio();
+            // TODO: determine whether "speaker mode" means normal/loud, or enable/disable speakers
+            call.setSpeakerMode(true);
+            //if(!call.isMuted()) {
+                // if not muted, be muted (does this mute the speaker or the mic? unclear)
+                // TODO: determine whether this mutes the speaker or the mic
+                call.toggleMute();
+            //}
+            mVoipTalking = true;
+            mButtVoip.setEnabled(true);
+            mButtVoip.setText(R.string.begin_voip_label);
+            mCallProgress.setProgress(99);
+            // show the image
+            mCallIndicator.setVisibility(View.VISIBLE);
+        }
+        @Override public void onCallEnded(SipAudioCall call) {
+            super.onCallEnded(call);
+            call.close();
+            mButtVoip.setEnabled(true); mCallProgress.setVisibility(View.INVISIBLE);
+        }
+        @Override public void onError(SipAudioCall call, int errorCode, String errorMessage) {
+            super.onError(call, errorCode, errorMessage);
+            Log.d(TAG, "some error with the call: " + errorCode + " " + errorMessage);
+            // idea: if an error happens when trying to connect, it probably won't connect
+            // if an error happens when it is already connected, then the buttons and progress bar will already be like this
+            mButtVoip.setEnabled(true); mCallProgress.setVisibility(View.INVISIBLE);
+        }
+    };
+
+
+    public void myEndCall() {
+        // TODO: call this in onStop and onPageChanged
+        if(mCall != null) {
+            try {
+                mCall.endCall();
+            } catch(SipException se) {
+                Log.d(TAG, "somehow failed to end the call", se);
+            }
+            mCall = null;
+        }
+        closeLocalProfile();
+        mVoipTalking = false;
+        mButtVoip.setEnabled(true); mCallProgress.setVisibility(View.INVISIBLE);
+        mButtVoip.setText(R.string.end_voip_label);
+        // hide the image
+        mCallIndicator.setVisibility(View.VISIBLE);
+    }
+
+    public void closeLocalProfile() {
+        if (mSipManager == null) {
+            return;
+        }
+        try {
+            if (mSipProfile != null) {
+                mSipManager.close(mSipProfile.getUriString());
+            }
+        } catch (SipException se) {
+            Log.d(TAG, "Failed to close local profile.", se);
+        }
+    }
+
+
+    // ===========================================================================================================
+    // photo stuff
+
+
 
     private void displayImage(byte[] bytes) {
         mImageView.setImageBitmap(BitmapFactory.decodeByteArray(bytes, 0, bytes.length));
@@ -358,14 +550,6 @@ public class CameraFragment extends Fragment {
         return file;
     }
 
-
-    View.OnClickListener mVoipClick = new View.OnClickListener() {
-        @Override public void onClick(View v) {
-            // use the same listener but either start/end call depending on state variables
-            // TODO: everything to do with VOIP
-            // NOTE: one thing to be done in the pager activity is, if the page is changed while in a call, end it
-        }
-    };
 
 
     View.OnClickListener mManualPhotoRequest = new View.OnClickListener() {
