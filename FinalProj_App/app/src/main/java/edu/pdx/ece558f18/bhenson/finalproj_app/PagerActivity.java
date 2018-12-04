@@ -59,6 +59,8 @@ public class PagerActivity extends AppCompatActivity
         if(z >= 0 && z <= 2) {
             // should never be 0 but it won't crash so i'll allow it
             mViewPager.setCurrentItem(z, false);
+        } else {
+            mViewPager.setCurrentItem(1, false);
         }
 
         mViewPager.addOnPageChangeListener(mPageChangeListener);

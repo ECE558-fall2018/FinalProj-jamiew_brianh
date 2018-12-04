@@ -30,23 +30,33 @@ public class MyFirebaseMessagingService extends FirebaseMessagingService {
         // CRITICAL NOTE: this function only triggers if the app is open & active when the notificaiton is received!
         super.onMessageReceived(remoteMessage);
         Log.d(TAG, "received something From: " + remoteMessage.getFrom());
-        boolean isactive = false;
+        int z = 1;
         // Check if message contains a data payload.
         if (remoteMessage.getData().size() > 0) {
             Log.d(TAG, "Message data payload: " + remoteMessage.getData().toString());
-            isactive = true;
+            String ias = remoteMessage.getData().get(Keys.KEY_GOTOPAGE);
+            if (ias != null) {
+                try {
+                    // should be 1 or 2
+                    z = Integer.parseInt(ias);
+                } catch(NumberFormatException nfe) {
+                    Log.d(TAG, "couldn't parse gotopage, assuming its a disconnect alarm");
+                }
+            }
         }
 
         // Check if message contains a notification payload.
         if (remoteMessage.getNotification() != null) {
-            Log.d(TAG, "Message Notification content: " + remoteMessage.getNotification().toString());
+            RemoteMessage.Notification r = remoteMessage.getNotification();
+            Log.d(TAG, "Message Notification content: " + r.getTitle() + "," + r.getBody() + "," +
+                    r.getTag() + "," + r.getIcon() + "," + r.getSound());
         }
 
         // Also if you intend on generating your own notifications as a result of a received FCM
         // message, here is where that should be initiated. See sendNotification method below.
 
         // generate a toast if the message is received while the app is open
-        sendNotification(isactive);
+        sendNotification(z);
     }
 
 
@@ -92,9 +102,8 @@ public class MyFirebaseMessagingService extends FirebaseMessagingService {
     /**
      * Manually create and show a simple notification containing the received FCM message.
      *
-     * @param isactivealarm boolean
      */
-    private void sendNotification( boolean isactivealarm ) {
+    private void sendNotification( int whichpage ) {
 
         String messageTitle;
         String messageBody;
@@ -102,7 +111,7 @@ public class MyFirebaseMessagingService extends FirebaseMessagingService {
         Intent intent = new Intent(this, LoginActivity.class);
         // these flags clear the existing activities and launch a fresh one... still no back stack! pefect!
         intent.setFlags(Intent.FLAG_ACTIVITY_NEW_TASK | Intent.FLAG_ACTIVITY_CLEAR_TASK);
-        if(isactivealarm) {
+        if(whichpage == 2) {
             intent.putExtra(Keys.KEY_GOTOPAGE, 2);
             messageTitle = Keys.FCM_ACTIVE_TITLE;
             messageBody = Keys.FCM_ACTIVE_MESSAGE;
