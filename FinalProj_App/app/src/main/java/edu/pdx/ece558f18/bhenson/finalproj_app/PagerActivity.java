@@ -21,8 +21,8 @@ import com.google.firebase.database.*;
 
 public class PagerActivity extends AppCompatActivity
         implements  ControlFragment.ControlFragmentListener,
-                    CameraFragment.CameraFragmentListener,
-                    SensorListFragment.SensorListFragmentListener {
+                    CameraFragment.CameraFragmentListener {
+//                    SensorListFragment.SensorListFragmentListener
 
     public static final String TAG = "SEC_Pager";
 

@@ -1,7 +1,6 @@
 package edu.pdx.ece558f18.bhenson.finalproj_app;
 
 import android.content.Context;
-import android.net.Uri;
 import android.os.Bundle;
 import android.support.annotation.NonNull;
 import android.support.v4.app.Fragment;
@@ -16,17 +15,17 @@ import com.google.firebase.auth.FirebaseAuth;
 import com.google.firebase.database.*;
 
 
-/**
- * A simple {@link Fragment} subclass.
- * Activities that contain this fragment must implement the
- * {@link SensorListFragmentListener} interface
- * to handle interaction events.
- * Use the {@link SensorListFragment#newInstance} factory method to
- * create an instance of this fragment.
- */
+///**
+// * A simple {@link Fragment} subclass.
+// * Activities that contain this fragment must implement the
+// * {@link SensorListFragmentListener} interface
+// * to handle interaction events.
+// * Use the {@link SensorListFragment#newInstance} factory method to
+// * create an instance of this fragment.
+// */
 public class SensorListFragment extends Fragment {
     public static final String TAG = "SEC_SnsrListFragment";
-    private SensorListFragmentListener mListener;
+//    private SensorListFragmentListener mListener;
 
     private boolean mIsConnected;
     private SensorListObj mSensorListObj_master; // holds the obj i got from the database
@@ -273,9 +272,9 @@ public class SensorListFragment extends Fragment {
      * "http://developer.android.com/training/basics/fragments/communicating.html"
      * >Communicating with Other Fragments</a> for more information.
      */
-    public interface SensorListFragmentListener {
-        void onFragmentInteraction(Uri uri);
-    }
+//    public interface SensorListFragmentListener {
+//        void onFragmentInteraction(Uri uri);
+//    }
 
     // ===========================================================================================================
     // override critical lifecycle functions, mostly for logging
@@ -285,17 +284,17 @@ public class SensorListFragment extends Fragment {
     public void onAttach(Context context) {
         super.onAttach(context);
         Log.d(TAG, "onAttach(context)");
-        if (context instanceof SensorListFragmentListener) {
-            mListener = (SensorListFragmentListener) context;
-        } else {
-            throw new RuntimeException(context.toString() + " must implement ControlFragmentListener");
-        }
+//        if (context instanceof SensorListFragmentListener) {
+//            mListener = (SensorListFragmentListener) context;
+//        } else {
+//            throw new RuntimeException(context.toString() + " must implement ControlFragmentListener");
+//        }
     }
 
     @Override
     public void onDetach() {
         super.onDetach();
-        mListener = null;
+//        mListener = null;
         Log.d(TAG, "onDetatch()");
 
     }
