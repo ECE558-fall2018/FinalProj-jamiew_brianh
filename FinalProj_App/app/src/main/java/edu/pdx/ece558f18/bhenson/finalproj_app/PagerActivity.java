@@ -1,5 +1,6 @@
 package edu.pdx.ece558f18.bhenson.finalproj_app;
 
+import android.app.NotificationManager;
 import android.content.Context;
 import android.content.Intent;
 import android.content.SharedPreferences;
@@ -54,7 +55,13 @@ public class PagerActivity extends AppCompatActivity
         // Set up the ViewPager with the sections adapter.
         mViewPager = (ViewPager) findViewById(R.id.pager);
         mViewPager.setAdapter(mSectionsPagerAdapter);
-        mViewPager.setCurrentItem(1, false);
+        int z = getIntent().getIntExtra(Keys.KEY_GOTOPAGE, -1);
+        if(z >= 0 && z <= 2) {
+            // should never be 0 but it won't crash so i'll allow it
+            mViewPager.setCurrentItem(z, false);
+        }
+
+        mViewPager.addOnPageChangeListener(mPageChangeListener);
 
         // get instance of the authentication object, hopefully already logged in
         mAuth = FirebaseAuth.getInstance();
@@ -65,15 +72,30 @@ public class PagerActivity extends AppCompatActivity
 
 
 
-
-        // get instance of a "cloud storage bucket"
-        // FirebaseStorage storage = FirebaseStorage.getInstance();
-
-
-
-
     }
 
+
+    private ViewPager.OnPageChangeListener mPageChangeListener = new  ViewPager.OnPageChangeListener() {
+        @Override public void onPageScrolled(int i, float v, int i1) { }// dont care, do nothing
+        @Override public void onPageScrollStateChanged(int i) { }// dont care, do nothing
+        @Override public void onPageSelected(int i) {
+            NotificationManager nm = (NotificationManager) getSystemService(Context.NOTIFICATION_SERVICE);
+            try {
+                if(i == 2) {
+                    // when moving to camera page, clear the alarm notification
+                    nm.cancel(Keys.ID_NOTIFY_ACTIVE);
+                }
+                if(i == 1) {
+                    // when moving to control page, clear the disconnect notification
+                    nm.cancel(Keys.ID_NOTIFY_DISCONNECT);
+                }
+            } catch (NullPointerException npe) {
+                Log.d(TAG, "notificaiton manager somehow failed, not sure how", npe);
+            }
+
+            // TODO: when moving to control or sensor page, if VOIP is active, hang up
+        }
+    };
 
     // inital read of database, and also fires each time it changes
     // set the member variable to be used in teh constructor if this fires before the fragments get made
@@ -153,6 +175,10 @@ public class PagerActivity extends AppCompatActivity
         mMyDatabase.child(Keys.DB_CAMERA_STATE).removeEventListener(((CameraFragment)mSectionsPagerAdapter.getRegisteredFragment(2)).mOnCameraStateChangeListener);
         mMyDatabase.child(Keys.DB_ARMED).removeEventListener(((ControlFragment)mSectionsPagerAdapter.getRegisteredFragment(1)).mArmedChangedListener);
 
+        // TODO: delete apptoken from the Database? otherwise I will continue to receive notifications after I log out
+        // even if I sign in as a different user, i will receive notifications for the first user
+
+        // TODO: consider deleting the local storage, too? so the next user won't see the last picture taken by the prev user?
         // sign out from firebase
         mAuth.signOut();
         // erase stored username and password from sharedprefs
@@ -267,6 +293,15 @@ public class PagerActivity extends AppCompatActivity
         if(currentUser == null) {
             Log.d(TAG, "ERROR: lost the login credentials!");
         }
+        try {
+            // when opened, close either/both of the notificaiton messages
+            NotificationManager nm = (NotificationManager) getSystemService(Context.NOTIFICATION_SERVICE);
+            nm.cancel(Keys.ID_NOTIFY_ACTIVE);
+            nm.cancel(Keys.ID_NOTIFY_DISCONNECT);
+        } catch (NullPointerException npe) {
+            Log.d(TAG, "notificaiton manager somehow failed, not sure how", npe);
+        }
+
     }
     @Override
     protected void onRestart() {

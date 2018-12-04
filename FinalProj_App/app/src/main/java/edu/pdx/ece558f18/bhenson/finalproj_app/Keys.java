@@ -10,10 +10,11 @@ public class Keys {
     public static final String PACKAGE = "edu.pdx.ece558f18.bhenson.finalproj_app";
     public static final String FILE_PREFS = PACKAGE + "sharedprefs";
     public static final String EMAIL_SUFFIX = "@pdx.edu";
-    public static final String KEY_USER = PACKAGE + "username";
-    public static final String KEY_PASS = PACKAGE + "password";
-    public static final String KEY_AUTOLOGIN = PACKAGE + "autologin";
-    public static final String KEY_ISCONNECTED = PACKAGE + "isconnected";
+    public static final String KEY_USER = "username";
+    public static final String KEY_PASS = "password";
+    public static final String KEY_AUTOLOGIN = "autologin";
+    public static final String KEY_ISCONNECTED = "isconnected";
+
 
     // file names in local storage will match the file names in the Firebase storage, for simplicity
     public static final String FILE_SMALL = "img_0640x0480.jpg";
@@ -22,7 +23,18 @@ public class Keys {
     public static final String DIR_PUBLIC = "SecurityApp";
 
     public static final int MAX_RETRY_CT = 4;
+    public static final int ID_NOTIFY_ACTIVE = 119;
+    public static final int ID_NOTIFY_DISCONNECT = 120;
     public static final int WRITE_PERMISSIONS_REQ_CODE = 12345;
+
+    // should be used in the notification code, at both ends
+    public static final String FCM_ACTIVE_TITLE = "!!! SecApp Alert !!!";
+    public static final String FCM_ACTIVE_MESSAGE = "Base Station has detected an intruder!";
+    public static final String FCM_DISCONNECT_TITLE = "SecApp: Warning";
+    public static final String FCM_DISCONNECT_MESSAGE = "Unexpectedly lost connection to base station";
+    public static final String KEY_GOTOPAGE = "goto_page";
+
+
 
     public static final Boolean DEFAULT_AUTOLOGIN = true;
 

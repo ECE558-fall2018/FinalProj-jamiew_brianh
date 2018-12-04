@@ -18,11 +18,11 @@ import com.google.firebase.messaging.FirebaseMessagingService;
 import com.google.firebase.messaging.RemoteMessage;
 
 public class MyFirebaseMessagingService extends FirebaseMessagingService {
-    public static final String TAG = "SECURITY_MyMsgService";
+    public static final String TAG = "SEC_MyMsgService";
 
     public MyFirebaseMessagingService() {
         super();
-        Log.d(TAG,"constructed messaging service");
+        //Log.d(TAG,"constructed messaging service");
     }
 
     @Override
@@ -30,20 +30,23 @@ public class MyFirebaseMessagingService extends FirebaseMessagingService {
         // CRITICAL NOTE: this function only triggers if the app is open & active when the notificaiton is received!
         super.onMessageReceived(remoteMessage);
         Log.d(TAG, "received something From: " + remoteMessage.getFrom());
+        boolean isactive = false;
         // Check if message contains a data payload.
         if (remoteMessage.getData().size() > 0) {
-            Log.d(TAG, "Message data payload: " + remoteMessage.getData());
+            Log.d(TAG, "Message data payload: " + remoteMessage.getData().toString());
+            isactive = true;
         }
 
         // Check if message contains a notification payload.
         if (remoteMessage.getNotification() != null) {
-            Log.d(TAG, "Message Notification Body: " + remoteMessage.getNotification().getBody());
+            Log.d(TAG, "Message Notification content: " + remoteMessage.getNotification().toString());
         }
 
         // Also if you intend on generating your own notifications as a result of a received FCM
         // message, here is where that should be initiated. See sendNotification method below.
-        // TODO: generate a toast if the message is received while the app is open?
-        // NOTE: to affect the app UI while the app is running, just send data thru the Database
+
+        // generate a toast if the message is received while the app is open
+        sendNotification(isactive);
     }
 
 
@@ -89,36 +92,55 @@ public class MyFirebaseMessagingService extends FirebaseMessagingService {
     /**
      * Manually create and show a simple notification containing the received FCM message.
      *
-     * @param messageBody FCM message body received.
+     * @param isactivealarm boolean
      */
-    private void sendNotification(String messageBody) {
-        // TODO: review this and understand it
+    private void sendNotification( boolean isactivealarm ) {
+
+        String messageTitle;
+        String messageBody;
+        int messageID;
         Intent intent = new Intent(this, LoginActivity.class);
-        intent.addFlags(Intent.FLAG_ACTIVITY_CLEAR_TOP);
-        PendingIntent pendingIntent = PendingIntent.getActivity(this, 0 /* Request code */, intent, PendingIntent.FLAG_ONE_SHOT);
+        // these flags clear the existing activities and launch a fresh one... still no back stack! pefect!
+        intent.setFlags(Intent.FLAG_ACTIVITY_NEW_TASK | Intent.FLAG_ACTIVITY_CLEAR_TASK);
+        if(isactivealarm) {
+            intent.putExtra(Keys.KEY_GOTOPAGE, 2);
+            messageTitle = Keys.FCM_ACTIVE_TITLE;
+            messageBody = Keys.FCM_ACTIVE_MESSAGE;
+            messageID = Keys.ID_NOTIFY_ACTIVE;
+        } else {
+            messageTitle = Keys.FCM_DISCONNECT_TITLE;
+            messageBody = Keys.FCM_DISCONNECT_MESSAGE;
+            messageID = Keys.ID_NOTIFY_DISCONNECT;
+        }
+        PendingIntent pendingIntent = PendingIntent.getActivity(this, 55 /* Request code, what is this? */, intent, PendingIntent.FLAG_ONE_SHOT);
 
         String channelId = getString(R.string.default_notification_channel_id);
         Uri defaultSoundUri = RingtoneManager.getDefaultUri(RingtoneManager.TYPE_NOTIFICATION);
         NotificationCompat.Builder notificationBuilder =
                 new NotificationCompat.Builder(this, channelId)
                         .setSmallIcon(R.mipmap.firebase_icon)
-                        .setContentTitle(getString(R.string.fcm_message))
+                        .setContentTitle(messageTitle)
                         .setContentText(messageBody)
                         .setAutoCancel(true)
                         .setSound(defaultSoundUri)
+                        .setPriority(NotificationManager.IMPORTANCE_HIGH) // this may work or may crash, dunno
                         .setContentIntent(pendingIntent);
 
-        NotificationManager notificationManager = (NotificationManager) getSystemService(Context.NOTIFICATION_SERVICE);
+        NotificationManager nm = (NotificationManager) getSystemService(Context.NOTIFICATION_SERVICE);
 
-        // Since android Oreo notification channel is needed.
-        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
-            NotificationChannel channel = new NotificationChannel(channelId,
-                    "Channel human readable title",
-                    NotificationManager.IMPORTANCE_DEFAULT);
-            notificationManager.createNotificationChannel(channel);
+        try {
+            // Since android Oreo notification channel is needed.
+            if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
+                NotificationChannel channel = new NotificationChannel(channelId,
+                        getString(R.string.default_notification_channel_id_human_readable),
+                        NotificationManager.IMPORTANCE_HIGH);
+                nm.createNotificationChannel(channel);
+            }
+
+            nm.notify(messageID, notificationBuilder.build());
+        } catch (NullPointerException npe) {
+            Log.d(TAG, "somehow got a null NotificationMangager? probably a rotation thing", npe);
         }
-
-        notificationManager.notify(0 /* ID of notification */, notificationBuilder.build());
     }
 
 

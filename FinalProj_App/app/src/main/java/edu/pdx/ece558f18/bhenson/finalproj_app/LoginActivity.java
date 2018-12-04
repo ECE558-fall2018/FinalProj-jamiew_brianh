@@ -33,6 +33,8 @@ public class LoginActivity extends AppCompatActivity {
     private FirebaseAuth mAuth;
     private DatabaseReference mDatabase;
 
+    private int mNextPage = 1;
+
 
     @Override
     protected void onCreate(Bundle saved) {
@@ -77,39 +79,31 @@ public class LoginActivity extends AppCompatActivity {
                 Object value = getIntent().getExtras().get(key);
                 Log.d(TAG, "Key: " + key + " Value: " + value);
             }
+            int z = -1;
+            try {
+                z = Integer.parseInt(getIntent().getStringExtra(Keys.KEY_GOTOPAGE));
+            } catch(NumberFormatException nfe) {
+                Log.d(TAG, "couldn't parse as a string, trying as int");
+                z = getIntent().getIntExtra(Keys.KEY_GOTOPAGE, -1);
+            }
+            Log.d(TAG, "z=" + z);
+            if(z >= 0 && z <= 2) {
+                mNextPage = z;
+            }
         }
         // [END handle_data_extras]
 
 
-        // TODO: determine if this is actually needed or not???
-        Intent i = new Intent(this, MyFirebaseMessagingService.class);
-        startService(i);
-
-
-
-
-        // uncomment this function to always skip the login page
-        // causes very slight hitch but whatever
-        //proceedToApp();
 
     }
 
-
-    /*
-    behavior:
-    launch
-    if there are shared preferences saved, get them and try to log in with them
-    if successful(?) then pass handle to the next activity(????) and launch it and finish myself
-    else if there are no preferences, wait for user to enter stuff
-    when button pressed, do the above stuff
-    if there is an error, then clear the boxes(?) and display toast with error
-     */
 
 
     // function: launch next activity
     private void proceedToApp() {
         Intent next = new Intent(LoginActivity.this, PagerActivity.class);
-        // add some extras?
+        // add the extra I got from the launching intent (if there are any)
+        next.putExtra(Keys.KEY_GOTOPAGE, mNextPage);
         startActivity(next);
         finish();
         return;

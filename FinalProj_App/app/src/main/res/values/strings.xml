@@ -5,8 +5,8 @@
     <string name="error">!ERROR!</string>
 
     <!-- Strings related to messaging service -->
-    <string name="default_notification_channel_id">default</string>
-    <string name="fcm_message">default</string>
+    <string name="default_notification_channel_id">default_channel</string>
+    <string name="default_notification_channel_id_human_readable">default_channel_human</string>
 
     <!-- Strings related to login, most are unused -->
     <string name="prompt_email">Username</string>
