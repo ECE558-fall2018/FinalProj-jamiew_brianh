@@ -201,8 +201,8 @@ public class LoginActivity extends AppCompatActivity {
                 userNode.child("voip").child("pi_addr").setValue("err");
                 userNode.child("voip").child("pi_username").setValue(false);
                 userNode.child("voip").child("pi_password").setValue(false);
-                // TODO: create empty sensor config object here
-                userNode.child(Keys.DB_SENSOR_CONFIG).setValue("???");
+                SensorListObj slo = new SensorListObj();
+                userNode.child(Keys.DB_SENSOR_CONFIG).setValue(slo.toString());
             }
 
             // once I have logged in and know my UUID then I should try to send the MessagingService token to the database

@@ -19,11 +19,29 @@ public class SensorListObj implements java.io.Serializable {
     public int[] mTypeList;
     // for each GPIO, there are 3 possible states: 0=disconnected, 1=contact sensor, 2=vibration sensor
 
-    public SensorListObj() {}
+
+    // the default constructor will create an object with the correct size and port names!
+    // BCM#, 2-27 = 26 entries
+    // BCM2/3 are reserved for I2C
+    // BCM4/5/6/7 are reserved for LEDs
+    // total reserved is 6
+    // i guess i can change the rest later
+    public SensorListObj() {
+        int bcm = 26;
+        int reserved = 6;
+        mNameList = new String[bcm - reserved];
+        mTypeList = new int[bcm - reserved];
+        for(int i = reserved; i < bcm; i++) {
+            //if(i<6) continue; // the first 6 are reserved
+            mNameList[i-reserved] = "BCM" + (i+2);
+            mTypeList[i-reserved] = 0;
+        }
+
+    }
 
     // create object with given size
+    // NOTE: DON'T USE THIS
     public SensorListObj(int number) {
-        // TODO: when creating this for the first time, use the correct size/GPIOnames
         mNameList = new String[number];
         mTypeList = new int[number];
         for(int i = 0; i < number; i++) {
