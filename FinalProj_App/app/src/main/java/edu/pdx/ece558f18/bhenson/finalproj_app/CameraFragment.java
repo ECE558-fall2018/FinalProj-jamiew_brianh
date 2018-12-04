@@ -17,6 +17,7 @@ import android.view.View;
 import android.view.ViewGroup;
 import android.widget.Button;
 import android.widget.ImageView;
+import android.widget.ProgressBar;
 import android.widget.Toast;
 import com.google.android.gms.tasks.OnFailureListener;
 import com.google.android.gms.tasks.OnSuccessListener;
@@ -54,6 +55,7 @@ public class CameraFragment extends Fragment {
     private Button mButtHires;
     private Button mButtVoip;
     private Button mButtSave;
+    private ProgressBar mProgressBar;
     private FirebaseAuth mAuth;
     private DatabaseReference mMyDatabase;
     private StorageReference mMyImages;
@@ -105,6 +107,7 @@ public class CameraFragment extends Fragment {
         mButtHires = (Button) v.findViewById(R.id.butt_hires);
         mButtVoip = (Button) v.findViewById(R.id.butt_voip);
         mButtSave = (Button) v.findViewById(R.id.butt_save);
+        mProgressBar = (ProgressBar) v.findViewById(R.id.camera_progress);
 
 //        try {
 //            Log.d(TAG, "assets are " + Arrays.toString(getContext().getAssets().list("")));
@@ -171,14 +174,19 @@ public class CameraFragment extends Fragment {
             // the others depend on the state
             if(mCameraState == 0) {
                 mButtManual.setEnabled(true); mButtHires.setEnabled(false);
+                mProgressBar.setVisibility(View.INVISIBLE);
             } else if(mCameraState == 3) {
                 mButtManual.setEnabled(true); mButtHires.setEnabled(true);
+                mProgressBar.setVisibility(View.INVISIBLE);
+            } else {
+                mButtManual.setEnabled(false); mButtHires.setEnabled(false);
+                mProgressBar.setVisibility(View.VISIBLE);
             }
         } else {
             // disable the buttons, regardless of what state the camera is in
             mButtVoip.setEnabled(false);
-            mButtManual.setEnabled(false);
-            mButtHires.setEnabled(false);
+            mButtManual.setEnabled(false); mButtHires.setEnabled(false);
+            mProgressBar.setVisibility(View.INVISIBLE);
         }
         mIsConnected = b;
     }
@@ -249,6 +257,7 @@ public class CameraFragment extends Fragment {
             public void onSuccess(byte[] bytes) {
                 // Data for "images/island.jpg" is returned, use this as needed
                 Log.d(TAG, "done downloading lores image, size = " + bytes.length);
+                mProgressBar.setProgress(15);
 
                 // part 1: save it into local storage
                 saveImageToLocal(sf, bytes);
@@ -299,6 +308,7 @@ public class CameraFragment extends Fragment {
             public void onSuccess(byte[] bytes) {
                 // Data for "images/island.jpg" is returned, use this as needed
                 Log.d(TAG, "done downloading hires image, size = " + bytes.length);
+                mProgressBar.setProgress(90);
 
                 // part 1: save it into external storage
                 saveImageToExternal(bytes);
@@ -362,6 +372,9 @@ public class CameraFragment extends Fragment {
         @Override public void onClick(View v) {
             // to request a photo be taken, simply move to state 1
             mMyDatabase.child(Keys.DB_CAMERA_STATE).setValue(1);
+            mProgressBar.setVisibility(View.VISIBLE);
+            mProgressBar.setProgress(15);
+            mButtManual.setEnabled(false); mButtHires.setEnabled(false);
         }
     };
 
@@ -387,6 +400,9 @@ public class CameraFragment extends Fragment {
     public void triggerDownload() {
         // set state to 4 to begin the download operation
         mMyDatabase.child(Keys.DB_CAMERA_STATE).setValue(4);
+        mProgressBar.setVisibility(View.VISIBLE);
+        mProgressBar.setProgress(15);
+        mButtManual.setEnabled(false); mButtHires.setEnabled(false);
     }
 
     protected ValueEventListener mOnCameraStateChangeListener = new ValueEventListener() {
@@ -407,13 +423,18 @@ public class CameraFragment extends Fragment {
 
                     // enable manual, disable hires
                     if(mIsConnected) { mButtManual.setEnabled(true); mButtHires.setEnabled(false); }
+                    mProgressBar.setVisibility(View.INVISIBLE);
                     break;
                 case 1:
                     // manually requested a photo be taken, pi is currently busy uploading the image
                     // triggered by my button press
 
                     // both buttons disabled (taken care of in on-click listener AND here)
-                    if(mIsConnected) { mButtManual.setEnabled(false); mButtHires.setEnabled(false); }
+                    if(mIsConnected) {
+                        mButtManual.setEnabled(false); mButtHires.setEnabled(false);
+                        mProgressBar.setVisibility(View.VISIBLE);
+                        mProgressBar.setProgress(15);
+                    }
                     // i did this
                     Log.d(TAG, "1: my write to the database triggered my own listener");
                     break;
@@ -421,7 +442,11 @@ public class CameraFragment extends Fragment {
                     // pi is done uploading the lores version, now I automatically download & display it
 
                     // disable both buttons
-                    if(mIsConnected) { mButtManual.setEnabled(false); mButtHires.setEnabled(false); }
+                    if(mIsConnected) {
+                        mButtManual.setEnabled(false); mButtHires.setEnabled(false);
+                        mProgressBar.setVisibility(View.VISIBLE);
+                        mProgressBar.setProgress(60);
+                    }
 
                     // download (how? async task?)
                     // save to local storage (my sandbox)
@@ -436,6 +461,7 @@ public class CameraFragment extends Fragment {
 
                     // both buttons ENABLED (if connected to Pi)(taken care of in previous stage AND here)
                     if(mIsConnected) { mButtManual.setEnabled(true); mButtHires.setEnabled(true); }
+                    mProgressBar.setVisibility(View.INVISIBLE);
 
                     if(mCameraState == 2) Log.d(TAG, "3: my write to the database triggered my own listener"); // i did this
                     if(mCameraState == 0) Log.d(TAG, "3: entered the pipeline at this stage");
@@ -445,7 +471,11 @@ public class CameraFragment extends Fragment {
                     // triggered by my button press
 
                     // both buttons disabled (taken care of in on-click listener AND here)
-                    if(mIsConnected) { mButtManual.setEnabled(false); mButtHires.setEnabled(false); }
+                    if(mIsConnected) {
+                        mButtManual.setEnabled(false); mButtHires.setEnabled(false);
+                        mProgressBar.setVisibility(View.VISIBLE);
+                        mProgressBar.setProgress(15);
+                    }
                     // i did this
                     Log.d(TAG, "4: my write to the database triggered my own listener");
                     break;
@@ -453,7 +483,11 @@ public class CameraFragment extends Fragment {
                     // the hires image is done being uploaded and I should start downloading it
 
                     // disable both buttons
-                    if(mIsConnected) { mButtManual.setEnabled(false); mButtHires.setEnabled(false); }
+                    if(mIsConnected) {
+                        mButtManual.setEnabled(false); mButtHires.setEnabled(false);
+                        mProgressBar.setVisibility(View.VISIBLE);
+                        mProgressBar.setProgress(60);
+                    }
                     // download (how? async task?)
                     // save to external storage, AKA photo gallery (what file name should I use?)
                     // create toast saying what file name was used

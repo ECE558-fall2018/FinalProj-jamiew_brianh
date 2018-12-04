@@ -19,6 +19,13 @@
                 android:adjustViewBounds="true"
                 android:id="@+id/imageView"
                 android:contentDescription="@string/blind_people_text"/>
+        <ProgressBar
+                android:id="@+id/camera_progress"
+                style="?android:attr/progressBarStyleHorizontal"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:layout_marginBottom="8dp"
+                android:visibility="invisible"/>
         <Button
                 android:text="@string/manual_capture_label"
                 android:layout_width="match_parent"
