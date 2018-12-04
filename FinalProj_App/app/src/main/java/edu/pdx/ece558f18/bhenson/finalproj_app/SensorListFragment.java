@@ -220,7 +220,7 @@ public class SensorListFragment extends Fragment {
 
         @Override
         public void onItemSelected(AdapterView<?> parent, View view, int position, long id) {
-            Log.d(TAG, "entry " + mPosition + " changed to " + position);
+            //Log.d(TAG, "entry " + mPosition + " changed to " + position);
             // if something was selected, then change what's held in mSensorListObj_temp to match
             mSensorListObj_temp.mTypeList[mPosition] = position;
             // if _temp and _master are the different, then enable both buttons... otherwise, disable both buttons
@@ -234,7 +234,7 @@ public class SensorListFragment extends Fragment {
         @Override
         public void onNothingSelected(AdapterView<?> parent) {
             // not sure how this can happen, or what do do when it does happen?
-            Log.d(TAG, "entry " + mPosition + " clicked nothing");
+            //Log.d(TAG, "entry " + mPosition + " clicked nothing");
         }
     }
 
