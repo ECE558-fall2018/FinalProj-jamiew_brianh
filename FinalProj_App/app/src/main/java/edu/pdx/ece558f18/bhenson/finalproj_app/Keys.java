@@ -25,7 +25,7 @@ public class Keys {
     public static final int MAX_RETRY_CT = 4;
     public static final int ID_NOTIFY_ACTIVE = 119;
     public static final int ID_NOTIFY_DISCONNECT = 120;
-    public static final int WRITE_PERMISSIONS_REQ_CODE = 12345;
+    public static final int PERM_REQ_WRITE_EXTERNAL = 12345;
 
     // should be used in the notification code, at both ends
     public static final String FCM_ACTIVE_TITLE = "!!! SecApp Alert !!!";
@@ -34,9 +34,25 @@ public class Keys {
     public static final String FCM_DISCONNECT_MESSAGE = "Unexpectedly lost connection to base station";
     public static final String KEY_GOTOPAGE = "goto_page";
 
-    public static final int SIP_TIMEOUT = 10;
-
     public static final Boolean DEFAULT_AUTOLOGIN = true;
+
+    // sip/voip stuff
+    public static final int SIP_TIMEOUT = 10;
+    // note: the Github account is publically viewable, so for future reference these accounts may be compromised
+    public static final String SIP_DOMAIN = "sip2sip.info";
+    public static final String SIP_APP_USERNAME = "nuthouse01";
+    public static final String SIP_APP_PASSWORD = "applesauce1";
+    public static final String SIP_PI_USERNAME = "nuthouse02";
+    public static final String SIP_PI_PASSWORD = "applesauce1";
+    public static final int PERM_REQ_USE_SIP = 33;
+    public static final int PERM_REQ_INTERNET = 34;
+    public static final int PERM_REQ_RECORD_AUDIO = 35;
+    public static final int PERM_REQ_ACCESS_WIFI_STATE = 36;
+    public static final int PERM_REQ_WAKE_LOCK = 37; // pretty sure I don't actually need this one
+    public static final int PERM_REQ_MODIFY_AUDIO_SETTINGS = 38;
+
+
+
 
 
     // =========================================================================
@@ -52,8 +68,7 @@ public class Keys {
     public static final String DB_CONNECTED =   "pi_connected";
     public static final String DB_TIMEOUT =     "timeout_threshold";
     public static final String DB_CAMERA_STATE ="camera/photo_pipeline_state";
-    // pending: sound stuff
-    // pending: voip stuff
+    public static final String DB_VOIP_REMOTE_URI = "voip/voip_pi_uri";
     public static final String DB_SENSOR_CONFIG = "sensor_config/sensor_config_obj";
 
 

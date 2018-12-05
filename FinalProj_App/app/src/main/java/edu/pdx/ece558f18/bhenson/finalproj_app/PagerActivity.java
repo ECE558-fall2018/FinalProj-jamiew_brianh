@@ -5,7 +5,6 @@ import android.content.Context;
 import android.content.Intent;
 import android.content.SharedPreferences;
 import android.content.pm.PackageManager;
-import android.net.Uri;
 import android.os.Bundle;
 import android.support.annotation.NonNull;
 import android.support.v4.app.Fragment;
@@ -23,7 +22,6 @@ import com.google.firebase.database.*;
 public class PagerActivity extends AppCompatActivity
         implements  ControlFragment.ControlFragmentListener,
                     CameraFragment.CameraFragmentListener {
-//                    SensorListFragment.SensorListFragmentListener
 
     public static final String TAG = "SEC_Pager";
 
@@ -95,7 +93,13 @@ public class PagerActivity extends AppCompatActivity
                 Log.d(TAG, "notificaiton manager somehow failed, not sure how", npe);
             }
 
-            // TODO: when moving to control or sensor page, if VOIP is active, hang up
+            // when moving to control or sensor page, if VOIP is active, hang up
+            if(i != 2) {
+                if(mSectionsPagerAdapter.getRegisteredFragment(2) != null) {
+                    CameraFragment f = (CameraFragment) mSectionsPagerAdapter.getRegisteredFragment(2);
+                    f.myEndCall();
+                }
+            }
         }
     };
 
@@ -138,26 +142,109 @@ public class PagerActivity extends AppCompatActivity
     // ===========================================================================================================
     // these callbacks are used by the fragments, these are needed by the interfaces
 
-    @Override
-    public void onFragmentInteraction(Uri uri) {
-        // stub
-    }
-
-    @Override
-    public void onRequestPermissionsResult(int requestCode, @NonNull String permissions[], @NonNull int[] grantResults) {
+    @Override public void onRequestPermissionsResult(int requestCode, @NonNull String permissions[], @NonNull int[] grantResults) {
         switch (requestCode) {
-            case Keys.WRITE_PERMISSIONS_REQ_CODE: {
+            case Keys.PERM_REQ_WRITE_EXTERNAL: {
                 // If request is cancelled, the result arrays are empty.
                 if (grantResults.length > 0 && grantResults[0] == PackageManager.PERMISSION_GRANTED) {
                     // permission was granted, yay! Proceed with the thing
-                    Log.d(TAG, "permission accepted");
+                    Log.d(TAG, "permission accepted for writing to external storage");
                     if(mSectionsPagerAdapter.getRegisteredFragment(2) != null) {
                         ((CameraFragment) mSectionsPagerAdapter.getRegisteredFragment(2)).triggerDownload();
                     }
                 } else {
-                    // permission denied, boo!
-                    // do nothing I suppose
-                    Log.d(TAG, "permission denied");
+                    // permission denied, boo! do nothing I suppose
+                    Log.d(TAG, "permission denied for WRITE_EXTRNAL");
+                }
+                return;
+            }
+
+            case Keys.PERM_REQ_USE_SIP: {
+                // If request is cancelled, the result arrays are empty.
+                if (grantResults.length > 0 && grantResults[0] == PackageManager.PERMISSION_GRANTED) {
+                    // permission was granted, yay!
+                    Log.d(TAG, "permission accepted for USE_SIP");
+                    if(mSectionsPagerAdapter.getRegisteredFragment(2) != null) {
+                        ((CameraFragment) mSectionsPagerAdapter.getRegisteredFragment(2)).myRequestVoipPermissions();
+                    }
+                } else {
+                    // permission denied, boo! do nothing I suppose
+                    Log.d(TAG, "permission denied for USE_SIP");
+                }
+                return;
+            }
+
+            case Keys.PERM_REQ_INTERNET: {
+                // If request is cancelled, the result arrays are empty.
+                if (grantResults.length > 0 && grantResults[0] == PackageManager.PERMISSION_GRANTED) {
+                    // permission was granted, yay!
+                    Log.d(TAG, "permission accepted for INTERNET");
+                    if(mSectionsPagerAdapter.getRegisteredFragment(2) != null) {
+                        ((CameraFragment) mSectionsPagerAdapter.getRegisteredFragment(2)).myRequestVoipPermissions();
+                    }
+                } else {
+                    // permission denied, boo! do nothing I suppose
+                    Log.d(TAG, "permission denied for INTERNET");
+                }
+                return;
+            }
+
+            case Keys.PERM_REQ_RECORD_AUDIO: {
+                // If request is cancelled, the result arrays are empty.
+                if (grantResults.length > 0 && grantResults[0] == PackageManager.PERMISSION_GRANTED) {
+                    // permission was granted, yay!
+                    Log.d(TAG, "permission accepted for RECORD_AUDIO");
+                    if(mSectionsPagerAdapter.getRegisteredFragment(2) != null) {
+                        ((CameraFragment) mSectionsPagerAdapter.getRegisteredFragment(2)).myRequestVoipPermissions();
+                    }
+                } else {
+                    // permission denied, boo! do nothing I suppose
+                    Log.d(TAG, "permission denied for RECORD_AUDIO");
+                }
+                return;
+            }
+
+            case Keys.PERM_REQ_ACCESS_WIFI_STATE: {
+                // If request is cancelled, the result arrays are empty.
+                if (grantResults.length > 0 && grantResults[0] == PackageManager.PERMISSION_GRANTED) {
+                    // permission was granted, yay!
+                    Log.d(TAG, "permission accepted for ACCESS_WIFI_STATE");
+                    if(mSectionsPagerAdapter.getRegisteredFragment(2) != null) {
+                        ((CameraFragment) mSectionsPagerAdapter.getRegisteredFragment(2)).myRequestVoipPermissions();
+                    }
+                } else {
+                    // permission denied, boo! do nothing I suppose
+                    Log.d(TAG, "permission denied for ACCESS_WIFI_STATE");
+                }
+                return;
+            }
+
+            case Keys.PERM_REQ_WAKE_LOCK: {
+                // If request is cancelled, the result arrays are empty.
+                if (grantResults.length > 0 && grantResults[0] == PackageManager.PERMISSION_GRANTED) {
+                    // permission was granted, yay!
+                    Log.d(TAG, "permission accepted for WAKE_LOCK");
+                    if(mSectionsPagerAdapter.getRegisteredFragment(2) != null) {
+                        ((CameraFragment) mSectionsPagerAdapter.getRegisteredFragment(2)).myRequestVoipPermissions();
+                    }
+                } else {
+                    // permission denied, boo! do nothing I suppose
+                    Log.d(TAG, "permission denied for WAKE_LOCK");
+                }
+                return;
+            }
+
+            case Keys.PERM_REQ_MODIFY_AUDIO_SETTINGS: {
+                // If request is cancelled, the result arrays are empty.
+                if (grantResults.length > 0 && grantResults[0] == PackageManager.PERMISSION_GRANTED) {
+                    // permission was granted, yay!
+                    Log.d(TAG, "permission accepted for MODIFY_AUDIO_SETTINGS");
+                    if(mSectionsPagerAdapter.getRegisteredFragment(2) != null) {
+                        ((CameraFragment) mSectionsPagerAdapter.getRegisteredFragment(2)).myRequestVoipPermissions();
+                    }
+                } else {
+                    // permission denied, boo! do nothing I suppose
+                    Log.d(TAG, "permission denied for MODIFY_AUDIO_SETTINGS");
                 }
                 return;
             }
@@ -175,6 +262,7 @@ public class PagerActivity extends AppCompatActivity
         // first, gotta unregister any listeners i think?????
         mMyDatabase.child(Keys.DB_CONNECTED).removeEventListener(mDisconnectListener);
         mMyDatabase.child(Keys.DB_CAMERA_STATE).removeEventListener(((CameraFragment)mSectionsPagerAdapter.getRegisteredFragment(2)).mOnCameraStateChangeListener);
+        mMyDatabase.child(Keys.DB_VOIP_REMOTE_URI).removeEventListener(((CameraFragment)mSectionsPagerAdapter.getRegisteredFragment(2)).mRemoteUriListener);
         mMyDatabase.child(Keys.DB_ARMED).removeEventListener(((ControlFragment)mSectionsPagerAdapter.getRegisteredFragment(1)).mArmedChangedListener);
 
         // TODO: delete apptoken from the Database? otherwise I will continue to receive notifications after I log out

@@ -185,23 +185,18 @@ public class LoginActivity extends AppCompatActivity {
                 userNode.child(Keys.DB_CONNECTED).setValue(false);
                 userNode.child(Keys.DB_TIMEOUT).setValue(10);
                 userNode.child(Keys.DB_CAMERA_STATE).setValue(0);
-                // TODO: decide how sound communication is structured
-                userNode.child("sound").child("done_uploading_new").setValue(false);
-                userNode.child("sound").child("done_downloading_new").setValue(false);
-                // TODO: decide how voip is structured, and if using it
-                userNode.child("voip").child("app_addr").setValue("err");
-                userNode.child("voip").child("app_username").setValue(false);
-                userNode.child("voip").child("app_password").setValue(false);
-                userNode.child("voip").child("pi_addr").setValue("err");
-                userNode.child("voip").child("pi_username").setValue(false);
-                userNode.child("voip").child("pi_password").setValue(false);
+                userNode.child(Keys.DB_VOIP_REMOTE_URI).setValue("-");
                 SensorListObj slo = new SensorListObj();
                 userNode.child(Keys.DB_SENSOR_CONFIG).setValue(slo.toString());
             }
 
             // once I have logged in and know my UUID then I should try to send the MessagingService token to the database
             // manually get the token
+
+            // in the app, use:
             FirebaseInstanceId.getInstance().getInstanceId().addOnCompleteListener(afterGetToken);
+            // in the pi, use:
+            //proceedToApp();
             // re-enable these elements
             mSubmitButton.setEnabled(true);
             mUsernameBox.setEnabled(true);

@@ -6,7 +6,6 @@ import android.content.Context;
 import android.content.Intent;
 import android.content.pm.PackageManager;
 import android.graphics.BitmapFactory;
-import android.net.Uri;
 import android.net.sip.*;
 import android.os.Bundle;
 import android.os.Environment;
@@ -133,28 +132,6 @@ public class CameraFragment extends Fragment {
         mProgressBar = (ProgressBar) v.findViewById(R.id.camera_progress);
         mCallProgress = (ProgressBar) v.findViewById(R.id.call_progress);
 
-//        try {
-//            Log.d(TAG, "assets are " + Arrays.toString(getContext().getAssets().list("")));
-//
-//            // first, read what i put in the assets folder
-//            InputStream i = getContext().getAssets().open("test_1800x1200.jpg", AssetManager.ACCESS_BUFFER);
-//            int size = i.available();
-//            byte[] buffer = new byte[size];
-//            i.read(buffer);
-//            i.close();
-//
-//            // then write that file into the local storage
-//            FileOutputStream outputStream = getContext().openFileOutput(Keys.FILE_MED, Context.MODE_PRIVATE);
-//            outputStream.write(buffer);
-//            outputStream.close();
-//        } catch (FileNotFoundException fnfe) {
-//            Log.d(TAG, "fnfe exception1", fnfe);
-//        } catch (IOException ioe) {
-//            Log.d(TAG, "io exception1", ioe);
-//        }
-
-
-
         // load the imageview with the last image I saved (should exist in local storage) or if there is none then leave blank
         // set up pointer to the small file location
         try {
@@ -179,7 +156,8 @@ public class CameraFragment extends Fragment {
         // attach the onValueChanged listener
         mMyDatabase.child(Keys.DB_CAMERA_STATE).addValueEventListener(mOnCameraStateChangeListener);
 
-        // TODO: read database to get remote URI
+        // read database to get remote URI
+        mMyDatabase.child(Keys.DB_VOIP_REMOTE_URI).addValueEventListener(mRemoteUriListener);
 
 
         setPiConnection(mIsConnected);
@@ -225,27 +203,71 @@ public class CameraFragment extends Fragment {
             if(!mVoipTalking) {
                 // placing a call:
                 // stage 1: check permissions
-                // todo
-
-
-
-
-
-
-
-
-
-
-
-
-
-                myCreateSipProfile();
+                myRequestVoipPermissions();
             } else {
                 // hanging up:
                 myEndCall();
             }
         }
     };
+
+
+    public void myRequestVoipPermissions() {
+        // this is called by voip button click, and its also called by pageractivity
+        // AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA I HATE PERMISSIONS
+        if(ContextCompat.checkSelfPermission(getActivity(), Manifest.permission.USE_SIP) != PackageManager.PERMISSION_GRANTED) {
+            Log.d(TAG, "need to request write permissions");
+            ActivityCompat.requestPermissions(getActivity(),
+                    new String[]{Manifest.permission.USE_SIP},
+                    Keys.PERM_REQ_USE_SIP);
+        } else {
+            // if I do somehow have permission, then check the next one
+            if(ContextCompat.checkSelfPermission(getActivity(), Manifest.permission.INTERNET) != PackageManager.PERMISSION_GRANTED) {
+                Log.d(TAG, "need to request write permissions");
+                ActivityCompat.requestPermissions(getActivity(),
+                        new String[]{Manifest.permission.INTERNET},
+                        Keys.PERM_REQ_INTERNET);
+            } else {
+                // if I do somehow have permission, then check the next one
+                if(ContextCompat.checkSelfPermission(getActivity(), Manifest.permission.RECORD_AUDIO) != PackageManager.PERMISSION_GRANTED) {
+                    Log.d(TAG, "need to request write permissions");
+                    ActivityCompat.requestPermissions(getActivity(),
+                            new String[]{Manifest.permission.RECORD_AUDIO},
+                            Keys.PERM_REQ_RECORD_AUDIO);
+                } else {
+                    // if I do somehow have permission, then check the next one
+                    if(ContextCompat.checkSelfPermission(getActivity(), Manifest.permission.ACCESS_WIFI_STATE) != PackageManager.PERMISSION_GRANTED) {
+                        Log.d(TAG, "need to request write permissions");
+                        ActivityCompat.requestPermissions(getActivity(),
+                                new String[]{Manifest.permission.ACCESS_WIFI_STATE},
+                                Keys.PERM_REQ_ACCESS_WIFI_STATE);
+                    } else {
+                        // if I do somehow have permission, then check the next one
+                        if(ContextCompat.checkSelfPermission(getActivity(), Manifest.permission.WAKE_LOCK) != PackageManager.PERMISSION_GRANTED) {
+                            Log.d(TAG, "need to request write permissions");
+                            ActivityCompat.requestPermissions(getActivity(),
+                                    new String[]{Manifest.permission.WAKE_LOCK},
+                                    Keys.PERM_REQ_WAKE_LOCK);
+                        } else {
+                            // if I do somehow have permission, then check the next one
+                            if(ContextCompat.checkSelfPermission(getActivity(), Manifest.permission.MODIFY_AUDIO_SETTINGS) != PackageManager.PERMISSION_GRANTED) {
+                                Log.d(TAG, "need to request write permissions");
+                                ActivityCompat.requestPermissions(getActivity(),
+                                        new String[]{Manifest.permission.MODIFY_AUDIO_SETTINGS},
+                                        Keys.PERM_REQ_MODIFY_AUDIO_SETTINGS);
+                            } else {
+                                // SUCCESS
+                                // I OFFICIALLY HAVE ALL THE PERMISSIONS I MIGHT POSSIBLY NEED
+                                // FINALLY I CAN DO THE THING
+                                myCreateSipProfile();
+                            }
+                        }
+                    }
+                }
+            }
+        }
+    }
+
 
     public void myCreateSipProfile() {
         mCallProgress.setVisibility(View.VISIBLE);
@@ -254,14 +276,13 @@ public class CameraFragment extends Fragment {
         // stage 1: build the profile
         SipProfile.Builder builder;
         try {
-            // TODO: my username/domain/password
-            builder = new SipProfile.Builder("username", "domain");
+            builder = new SipProfile.Builder(Keys.SIP_APP_USERNAME, Keys.SIP_DOMAIN);
         } catch (ParseException pe) {
             Log.d(TAG, "failed to parse the username and domain", pe);
             mButtVoip.setEnabled(true); mCallProgress.setVisibility(View.INVISIBLE);
             return;
         }
-        builder.setPassword("password");
+        builder.setPassword(Keys.SIP_APP_PASSWORD);
         mSipProfile = builder.build();
 
         // stage 2: register the profile
@@ -347,7 +368,7 @@ public class CameraFragment extends Fragment {
 
 
     public void myEndCall() {
-        // TODO: call this in onStop and onPageChanged
+        // note: this is called in onStop and onPageChanged
         if(mCall != null) {
             try {
                 mCall.endCall();
@@ -361,7 +382,7 @@ public class CameraFragment extends Fragment {
         mButtVoip.setEnabled(true); mCallProgress.setVisibility(View.INVISIBLE);
         mButtVoip.setText(R.string.end_voip_label);
         // hide the image
-        mCallIndicator.setVisibility(View.VISIBLE);
+        mCallIndicator.setVisibility(View.INVISIBLE);
     }
 
     public void closeLocalProfile() {
@@ -377,6 +398,24 @@ public class CameraFragment extends Fragment {
         }
     }
 
+    protected ValueEventListener mRemoteUriListener = new ValueEventListener() {
+        @Override public void onDataChange(@NonNull DataSnapshot ds) {
+            String s = ds.getValue(String.class);
+            if(s == null) {
+                Log.d(TAG, "remote uri node doesn't exist for some reason");
+            } else if(s.equals("-")) {
+                Log.d(TAG, "remote uri node exists but hasn't been filled");
+            } else {
+                Log.d(TAG, "successfully got remote uri");
+                mRemoteUri = s;
+                mButtVoip.setEnabled(true);
+            }
+        }
+        @Override public void onCancelled(@NonNull DatabaseError de) {
+            // Failed to read value, not sure how or what to do about it
+            Log.d(TAG, "firebase error: failed to get snapshot??", de.toException());
+        }
+    };
 
     // ===========================================================================================================
     // photo stuff
@@ -570,7 +609,7 @@ public class CameraFragment extends Fragment {
 
                 ActivityCompat.requestPermissions(getActivity(),
                         new String[]{Manifest.permission.WRITE_EXTERNAL_STORAGE},
-                        Keys.WRITE_PERMISSIONS_REQ_CODE);
+                        Keys.PERM_REQ_WRITE_EXTERNAL);
 
                 // the result is returned to onRequestPermissionsResult on the activity level
 
@@ -717,8 +756,6 @@ public class CameraFragment extends Fragment {
      * >Communicating with Other Fragments</a> for more information.
      */
     public interface CameraFragmentListener {
-        // TODO: Update argument type and name for VOIP callbacks
-        void onFragmentInteraction(Uri uri);
         void onRequestPermissionsResult(int requestCode, String permissions[], int[] grantResults);
     }
     // ===========================================================================================================
@@ -751,6 +788,8 @@ public class CameraFragment extends Fragment {
     public void onStop() {
         super.onStop();
         Log.d(TAG, "onStop()");
+        // call this function whenever the app stops (lock screen for example)
+        myEndCall();
     }
     @Override
     public void onDestroy() {
