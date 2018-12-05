@@ -121,6 +121,7 @@ public class SensorListFragment extends Fragment {
             mApply.setEnabled(false); mReset.setEnabled(false);
         }
         // is there a simple way to disable all of the elements under/inside a view?
+        // TODO: this doesn't work, find a way that does wwork
         if(b) {
             mRecyclerView.setEnabled(true);
         } else {

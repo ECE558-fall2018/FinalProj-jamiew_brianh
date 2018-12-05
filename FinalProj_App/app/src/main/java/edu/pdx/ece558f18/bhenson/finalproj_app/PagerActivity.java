@@ -150,7 +150,7 @@ public class PagerActivity extends AppCompatActivity
                     // permission was granted, yay! Proceed with the thing
                     Log.d(TAG, "permission accepted for writing to external storage");
                     if(mSectionsPagerAdapter.getRegisteredFragment(2) != null) {
-                        ((CameraFragment) mSectionsPagerAdapter.getRegisteredFragment(2)).triggerDownload();
+                        ((CameraFragment) mSectionsPagerAdapter.getRegisteredFragment(2)).myAttemptToDownload();
                     }
                 } else {
                     // permission denied, boo! do nothing I suppose
@@ -165,7 +165,7 @@ public class PagerActivity extends AppCompatActivity
                     // permission was granted, yay!
                     Log.d(TAG, "permission accepted for USE_SIP");
                     if(mSectionsPagerAdapter.getRegisteredFragment(2) != null) {
-                        ((CameraFragment) mSectionsPagerAdapter.getRegisteredFragment(2)).myRequestVoipPermissions();
+                        ((CameraFragment) mSectionsPagerAdapter.getRegisteredFragment(2)).myAttemptToCall();
                     }
                 } else {
                     // permission denied, boo! do nothing I suppose
@@ -180,7 +180,7 @@ public class PagerActivity extends AppCompatActivity
                     // permission was granted, yay!
                     Log.d(TAG, "permission accepted for INTERNET");
                     if(mSectionsPagerAdapter.getRegisteredFragment(2) != null) {
-                        ((CameraFragment) mSectionsPagerAdapter.getRegisteredFragment(2)).myRequestVoipPermissions();
+                        ((CameraFragment) mSectionsPagerAdapter.getRegisteredFragment(2)).myAttemptToCall();
                     }
                 } else {
                     // permission denied, boo! do nothing I suppose
@@ -195,7 +195,7 @@ public class PagerActivity extends AppCompatActivity
                     // permission was granted, yay!
                     Log.d(TAG, "permission accepted for RECORD_AUDIO");
                     if(mSectionsPagerAdapter.getRegisteredFragment(2) != null) {
-                        ((CameraFragment) mSectionsPagerAdapter.getRegisteredFragment(2)).myRequestVoipPermissions();
+                        ((CameraFragment) mSectionsPagerAdapter.getRegisteredFragment(2)).myAttemptToCall();
                     }
                 } else {
                     // permission denied, boo! do nothing I suppose
@@ -210,7 +210,7 @@ public class PagerActivity extends AppCompatActivity
                     // permission was granted, yay!
                     Log.d(TAG, "permission accepted for ACCESS_WIFI_STATE");
                     if(mSectionsPagerAdapter.getRegisteredFragment(2) != null) {
-                        ((CameraFragment) mSectionsPagerAdapter.getRegisteredFragment(2)).myRequestVoipPermissions();
+                        ((CameraFragment) mSectionsPagerAdapter.getRegisteredFragment(2)).myAttemptToCall();
                     }
                 } else {
                     // permission denied, boo! do nothing I suppose
@@ -225,7 +225,7 @@ public class PagerActivity extends AppCompatActivity
                     // permission was granted, yay!
                     Log.d(TAG, "permission accepted for WAKE_LOCK");
                     if(mSectionsPagerAdapter.getRegisteredFragment(2) != null) {
-                        ((CameraFragment) mSectionsPagerAdapter.getRegisteredFragment(2)).myRequestVoipPermissions();
+                        ((CameraFragment) mSectionsPagerAdapter.getRegisteredFragment(2)).myAttemptToCall();
                     }
                 } else {
                     // permission denied, boo! do nothing I suppose
@@ -240,7 +240,7 @@ public class PagerActivity extends AppCompatActivity
                     // permission was granted, yay!
                     Log.d(TAG, "permission accepted for MODIFY_AUDIO_SETTINGS");
                     if(mSectionsPagerAdapter.getRegisteredFragment(2) != null) {
-                        ((CameraFragment) mSectionsPagerAdapter.getRegisteredFragment(2)).myRequestVoipPermissions();
+                        ((CameraFragment) mSectionsPagerAdapter.getRegisteredFragment(2)).myAttemptToCall();
                     }
                 } else {
                     // permission denied, boo! do nothing I suppose

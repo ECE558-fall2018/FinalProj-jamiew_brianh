@@ -202,56 +202,68 @@ public class CameraFragment extends Fragment {
             mButtVoip.setEnabled(false);
             if(!mVoipTalking) {
                 // placing a call:
-                // stage 1: check permissions
-                myRequestVoipPermissions();
+                Log.d(TAG, "starting a call");
+                myAttemptToCall();
             } else {
                 // hanging up:
+                Log.d(TAG, "ending the call");
                 myEndCall();
             }
         }
     };
 
+    public void myAttemptToCall() {
+        // stage 1: check permissions
+        if(myRequestVoipPermissions()) {
+            // stage 2: create a profile
+            myCreateSipProfile();
+            // stage 3: register the profile (the hard part)
+            myRegisterSipProfile();
+            // then goes into listener and the listener asynchronously calls myPlaceCall() if it actually succeeds
+        }
+    }
 
-    public void myRequestVoipPermissions() {
+    private boolean myRequestVoipPermissions() {
+        // return TRUE if it passes, FALSE otherwise
         // this is called by voip button click, and its also called by pageractivity
         // AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA I HATE PERMISSIONS
         if(ContextCompat.checkSelfPermission(getActivity(), Manifest.permission.USE_SIP) != PackageManager.PERMISSION_GRANTED) {
-            Log.d(TAG, "need to request write permissions");
+            Log.d(TAG, "need to request sip permissions");
             ActivityCompat.requestPermissions(getActivity(),
                     new String[]{Manifest.permission.USE_SIP},
                     Keys.PERM_REQ_USE_SIP);
         } else {
             // if I do somehow have permission, then check the next one
             if(ContextCompat.checkSelfPermission(getActivity(), Manifest.permission.INTERNET) != PackageManager.PERMISSION_GRANTED) {
-                Log.d(TAG, "need to request write permissions");
+                Log.d(TAG, "need to request internet permissions");
                 ActivityCompat.requestPermissions(getActivity(),
                         new String[]{Manifest.permission.INTERNET},
                         Keys.PERM_REQ_INTERNET);
             } else {
                 // if I do somehow have permission, then check the next one
                 if(ContextCompat.checkSelfPermission(getActivity(), Manifest.permission.RECORD_AUDIO) != PackageManager.PERMISSION_GRANTED) {
-                    Log.d(TAG, "need to request write permissions");
+                    Log.d(TAG, "need to request audio permissions");
                     ActivityCompat.requestPermissions(getActivity(),
                             new String[]{Manifest.permission.RECORD_AUDIO},
                             Keys.PERM_REQ_RECORD_AUDIO);
                 } else {
                     // if I do somehow have permission, then check the next one
                     if(ContextCompat.checkSelfPermission(getActivity(), Manifest.permission.ACCESS_WIFI_STATE) != PackageManager.PERMISSION_GRANTED) {
-                        Log.d(TAG, "need to request write permissions");
+                        Log.d(TAG, "need to request wifi permissions");
                         ActivityCompat.requestPermissions(getActivity(),
                                 new String[]{Manifest.permission.ACCESS_WIFI_STATE},
                                 Keys.PERM_REQ_ACCESS_WIFI_STATE);
                     } else {
                         // if I do somehow have permission, then check the next one
                         if(ContextCompat.checkSelfPermission(getActivity(), Manifest.permission.WAKE_LOCK) != PackageManager.PERMISSION_GRANTED) {
-                            Log.d(TAG, "need to request write permissions");
+                            Log.d(TAG, "need to request wake permissions");
                             ActivityCompat.requestPermissions(getActivity(),
                                     new String[]{Manifest.permission.WAKE_LOCK},
                                     Keys.PERM_REQ_WAKE_LOCK);
                         } else {
                             // if I do somehow have permission, then check the next one
                             if(ContextCompat.checkSelfPermission(getActivity(), Manifest.permission.MODIFY_AUDIO_SETTINGS) != PackageManager.PERMISSION_GRANTED) {
-                                Log.d(TAG, "need to request write permissions");
+                                Log.d(TAG, "need to request modify_audio permissions");
                                 ActivityCompat.requestPermissions(getActivity(),
                                         new String[]{Manifest.permission.MODIFY_AUDIO_SETTINGS},
                                         Keys.PERM_REQ_MODIFY_AUDIO_SETTINGS);
@@ -259,13 +271,14 @@ public class CameraFragment extends Fragment {
                                 // SUCCESS
                                 // I OFFICIALLY HAVE ALL THE PERMISSIONS I MIGHT POSSIBLY NEED
                                 // FINALLY I CAN DO THE THING
-                                myCreateSipProfile();
+                                return true;
                             }
                         }
                     }
                 }
             }
         }
+        return false;
     }
 
 
@@ -273,53 +286,74 @@ public class CameraFragment extends Fragment {
         mCallProgress.setVisibility(View.VISIBLE);
         mCallProgress.setProgress(20);
 
+        Log.d(TAG, "CAN WE DO IT " + SipManager.isApiSupported(getContext()) + " AND " + SipManager.isVoipSupported(getContext()));
+
         // stage 1: build the profile
         SipProfile.Builder builder;
         try {
             builder = new SipProfile.Builder(Keys.SIP_APP_USERNAME, Keys.SIP_DOMAIN);
         } catch (ParseException pe) {
             Log.d(TAG, "failed to parse the username and domain", pe);
-            mButtVoip.setEnabled(true); mCallProgress.setVisibility(View.INVISIBLE);
+            mButtVoip.setEnabled(true);
+            mCallProgress.setVisibility(View.INVISIBLE);
             return;
         }
         builder.setPassword(Keys.SIP_APP_PASSWORD);
         mSipProfile = builder.build();
 
+        Log.d(TAG, "my uri = " + mSipProfile.getUriString());
+    }
+
+    public void myRegisterSipProfile() {
         // stage 2: register the profile
         Intent intent = new Intent();
         intent.setAction("android.SipDemo.INCOMING_CALL");
         PendingIntent pendingIntent = PendingIntent.getBroadcast(getContext(), 0, intent, Intent.FILL_IN_DATA);
+
+        // stage 2.5: actually do the thing AFTER the listener is set up
+        // stage 3: wait for registration result
+        mCallProgress.setProgress(30);
+        Log.d(TAG, "beginning registration");
         try {
-            mSipManager.open(mSipProfile, pendingIntent, null);
+            // this is open for send and receive
+            //mSipManager.open(mSipProfile, pendingIntent, null);
+            // this is open for send only
+            mSipManager.open(mSipProfile);
+            Log.d(TAG, "am i opened? " + mSipManager.isOpened(mSipProfile.getUriString()));
+            mSipManager.register(mSipProfile, 20, myRegistrationListener);
+            //mSipManager.setRegistrationListener(mSipProfile.getUriString(), myRegistrationListener);
         } catch (SipException se) {
             Log.d(TAG, "some unknown SIP exception when opening", se);
             mButtVoip.setEnabled(true); mCallProgress.setVisibility(View.INVISIBLE);
             return;
         }
 
-        mCallProgress.setProgress(30);
-        // stage 3: wait for registration result
-        try {
-            mSipManager.setRegistrationListener(mSipProfile.getUriString(), new SipRegistrationListener() {
-                @Override public void onRegistering(String localProfileUri) {
-                    //updateStatus("Registering with SIP Server...");
-                    mCallProgress.setProgress(40);
-                }
-                @Override public void onRegistrationFailed(String localProfileUri, int errorCode, String errorMessage) {
-                    //updateStatus("Registration failed.  Please check settings.");
-                    Log.d(TAG, "some error with the registration: " + errorCode + " " + errorMessage);
-                    mButtVoip.setEnabled(true); mCallProgress.setVisibility(View.INVISIBLE);
-                }
-                @Override public void onRegistrationDone(String localProfileUri, long expiryTime) {
-                    myPlaceCall();
-                }
-            });
-        } catch(SipException se) {
-            Log.d(TAG, "some unknown SIP exception when registering", se);
-            mButtVoip.setEnabled(true); mCallProgress.setVisibility(View.INVISIBLE);
-            return;
-        }
     }
+
+
+    public SipRegistrationListener myRegistrationListener = new SipRegistrationListener() {
+        @Override
+        public void onRegistering(String localProfileUri) {
+            //updateStatus("Registering with SIP Server...");
+            Log.d(TAG, "+++ now registering");
+            mCallProgress.setProgress(40);
+        }
+
+        @Override
+        public void onRegistrationFailed(String localProfileUri, int errorCode, String errorMessage) {
+            //updateStatus("Registration failed.  Please check settings.");
+            Log.d(TAG, "so2me error with the registration: " + errorCode + " " + errorMessage);
+            mButtVoip.setEnabled(true); mCallProgress.setVisibility(View.INVISIBLE);
+        }
+
+        @Override
+        public void onRegistrationDone(String localProfileUri, long expiryTime) {
+            Log.d(TAG, "+++ DONE REGISTERING!");
+            myPlaceCall();
+        }
+    };
+
+
 
     public void myPlaceCall() {
         mCallProgress.setProgress(60);
@@ -347,7 +381,7 @@ public class CameraFragment extends Fragment {
             //}
             mVoipTalking = true;
             mButtVoip.setEnabled(true);
-            mButtVoip.setText(R.string.begin_voip_label);
+            mButtVoip.setText(R.string.end_voip_label);
             mCallProgress.setProgress(99);
             // show the image
             mCallIndicator.setVisibility(View.VISIBLE);
@@ -380,7 +414,7 @@ public class CameraFragment extends Fragment {
         closeLocalProfile();
         mVoipTalking = false;
         mButtVoip.setEnabled(true); mCallProgress.setVisibility(View.INVISIBLE);
-        mButtVoip.setText(R.string.end_voip_label);
+        mButtVoip.setText(R.string.begin_voip_label);
         // hide the image
         mCallIndicator.setVisibility(View.INVISIBLE);
     }
@@ -408,7 +442,7 @@ public class CameraFragment extends Fragment {
             } else {
                 Log.d(TAG, "successfully got remote uri");
                 mRemoteUri = s;
-                mButtVoip.setEnabled(true);
+                if(mIsConnected) mButtVoip.setEnabled(true);
             }
         }
         @Override public void onCancelled(@NonNull DatabaseError de) {
@@ -603,29 +637,34 @@ public class CameraFragment extends Fragment {
 
     View.OnClickListener mHiresPhotoRequest = new View.OnClickListener() {
         @Override public void onClick(View v) {
-            // to request a download of the hires image, simply move to state 4
-            if(ContextCompat.checkSelfPermission(getActivity(), Manifest.permission.WRITE_EXTERNAL_STORAGE) != PackageManager.PERMISSION_GRANTED) {
-                Log.d(TAG, "need to request write permissions");
-
-                ActivityCompat.requestPermissions(getActivity(),
-                        new String[]{Manifest.permission.WRITE_EXTERNAL_STORAGE},
-                        Keys.PERM_REQ_WRITE_EXTERNAL);
-
-                // the result is returned to onRequestPermissionsResult on the activity level
-
-            } else {
-                // if I do somehow have permission, then do the thing right now
-                triggerDownload();
-            }
+            myAttemptToDownload();
         }
     };
 
-    public void triggerDownload() {
-        // set state to 4 to begin the download operation
-        mMyDatabase.child(Keys.DB_CAMERA_STATE).setValue(4);
-        mProgressBar.setVisibility(View.VISIBLE);
-        mProgressBar.setProgress(15);
-        mButtManual.setEnabled(false); mButtHires.setEnabled(false);
+    public void myAttemptToDownload() {
+        // to request a download of the hires image, simply move to state 4
+        if(myRequestDownloadPermissions()) {
+            // if I do somehow have permission, then do the thing right now
+            // set state to 4 to begin the download operation
+            mMyDatabase.child(Keys.DB_CAMERA_STATE).setValue(4);
+            mProgressBar.setVisibility(View.VISIBLE);
+            mProgressBar.setProgress(15);
+            mButtManual.setEnabled(false); mButtHires.setEnabled(false);
+        }
+    }
+
+    public boolean myRequestDownloadPermissions() {
+        // to request a download of the hires image, first need to get permissions
+        if (ContextCompat.checkSelfPermission(getActivity(), Manifest.permission.WRITE_EXTERNAL_STORAGE) != PackageManager.PERMISSION_GRANTED) {
+            Log.d(TAG, "need to request write permissions");
+            ActivityCompat.requestPermissions(getActivity(),
+                    new String[]{Manifest.permission.WRITE_EXTERNAL_STORAGE},
+                    Keys.PERM_REQ_WRITE_EXTERNAL);
+            // the result is returned to onRequestPermissionsResult on the activity level
+        } else {
+            return true;
+        }
+        return false;
     }
 
     protected ValueEventListener mOnCameraStateChangeListener = new ValueEventListener() {
