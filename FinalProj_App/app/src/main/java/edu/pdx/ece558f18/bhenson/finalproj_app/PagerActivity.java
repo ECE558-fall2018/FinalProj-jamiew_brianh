@@ -38,7 +38,7 @@ public class PagerActivity extends AppCompatActivity
     private ViewPager mViewPager;
     private FirebaseAuth mAuth;
     private DatabaseReference mMyDatabase;
-    private boolean mPiIsConnected = false;
+    public boolean mPiIsConnected = false;
 
     @Override
     protected void onCreate(Bundle saved) {
@@ -122,15 +122,15 @@ public class PagerActivity extends AppCompatActivity
             // if the fragments DO exist, then call the functions to enable/disable their buttons
             if(mSectionsPagerAdapter.getRegisteredFragment(0) != null) {
                 SensorListFragment f = (SensorListFragment) mSectionsPagerAdapter.getRegisteredFragment(0);
-                f.setPiConnection(b);
+                f.updatePiConnectionState();
             }
             if(mSectionsPagerAdapter.getRegisteredFragment(1) != null) {
                 ControlFragment f = (ControlFragment) mSectionsPagerAdapter.getRegisteredFragment(1);
-                f.setPiConnection(b);
+                f.updatePiConnectionState();
             }
             if(mSectionsPagerAdapter.getRegisteredFragment(2) != null) {
                 CameraFragment f = (CameraFragment) mSectionsPagerAdapter.getRegisteredFragment(2);
-                f.setPiConnection(b);
+                f.updatePiConnectionState();
             }
         }
 

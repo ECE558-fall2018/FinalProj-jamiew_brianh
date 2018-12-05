@@ -15,17 +15,8 @@ import com.google.firebase.auth.FirebaseAuth;
 import com.google.firebase.database.*;
 
 
-///**
-// * A simple {@link Fragment} subclass.
-// * Activities that contain this fragment must implement the
-// * {@link SensorListFragmentListener} interface
-// * to handle interaction events.
-// * Use the {@link SensorListFragment#newInstance} factory method to
-// * create an instance of this fragment.
-// */
 public class SensorListFragment extends Fragment {
     public static final String TAG = "SEC_SnsrListFragment";
-//    private SensorListFragmentListener mListener;
 
     private boolean mIsConnected;
     private SensorListObj mSensorListObj_master; // holds the obj i got from the database
@@ -93,16 +84,14 @@ public class SensorListFragment extends Fragment {
         mApply.setOnClickListener(mApplyListener);
         mReset.setOnClickListener(mResetListener);
 
-        // TODO: get the sensor object from the database, the list is empty until that happens
         mSensorListObj_master = new SensorListObj(0);
         // create the temp as a copy of the master
         mSensorListObj_temp = new SensorListObj(mSensorListObj_master);
 
+        // get the sensor object from the database, the list is empty until that happens
         mMyDatabase.child(Keys.DB_SENSOR_CONFIG).addListenerForSingleValueEvent(mInitSensConfig);
 
-        setPiConnection(mIsConnected);
         return v;
-        // TODO: tear out the interface part, since it's unused?
 
         // TODO: add a "calibrate" button to trigger the range finder setup phase?
     }
@@ -113,22 +102,18 @@ public class SensorListFragment extends Fragment {
 
 
     // sets the buttons and whatnot to be enabled/disabled as appropriate
-    public void setPiConnection(boolean b) {
+    public void updatePiConnectionState() {
+        boolean b = ((PagerActivity)getActivity()).mPiIsConnected;
         // if _temp and _master are the different, then enable both buttons... otherwise, disable both buttons
+        if(b != mIsConnected) Log.d(TAG, "pi_connected state changed, now " + b);
         if(!mSensorListObj_master.equals(mSensorListObj_temp) && b) {
             mApply.setEnabled(true); mReset.setEnabled(true);
         } else {
             mApply.setEnabled(false); mReset.setEnabled(false);
         }
         // is there a simple way to disable all of the elements under/inside a view?
-        // TODO: this doesn't work, find a way that does wwork
-        if(b) {
-            mRecyclerView.setEnabled(true);
-        } else {
-            mRecyclerView.setEnabled(false);
-        }
-
         mIsConnected = b;
+        mAdapter.notifyDataSetChanged();
     }
 
 
@@ -220,6 +205,7 @@ public class SensorListFragment extends Fragment {
             mPosition = position;
             mTv.setText(mSensorListObj_temp.mNameList[position]);
             mSpinner.setSelection(mSensorListObj_temp.mTypeList[position]);
+            mSpinner.setEnabled(mIsConnected);
         }
 
         @Override
@@ -265,22 +251,6 @@ public class SensorListFragment extends Fragment {
 
 
     // ===========================================================================================================
-
-    /**
-     * This interface must be implemented by activities that contain this
-     * fragment to allow an interaction in this fragment to be communicated
-     * to the activity and potentially other fragments contained in that
-     * activity.
-     * <p>
-     * See the Android Training lesson <a href=
-     * "http://developer.android.com/training/basics/fragments/communicating.html"
-     * >Communicating with Other Fragments</a> for more information.
-     */
-//    public interface SensorListFragmentListener {
-//        void onFragmentInteraction(Uri uri);
-//    }
-
-    // ===========================================================================================================
     // override critical lifecycle functions, mostly for logging
 
 
@@ -288,17 +258,11 @@ public class SensorListFragment extends Fragment {
     public void onAttach(Context context) {
         super.onAttach(context);
         Log.d(TAG, "onAttach(context)");
-//        if (context instanceof SensorListFragmentListener) {
-//            mListener = (SensorListFragmentListener) context;
-//        } else {
-//            throw new RuntimeException(context.toString() + " must implement ControlFragmentListener");
-//        }
     }
 
     @Override
     public void onDetach() {
         super.onDetach();
-//        mListener = null;
         Log.d(TAG, "onDetatch()");
 
     }
@@ -306,6 +270,7 @@ public class SensorListFragment extends Fragment {
     public void onStart() {
         super.onStart();
         Log.d(TAG, "onStart()");
+        updatePiConnectionState();
     }
     @Override
     public void onStop() {

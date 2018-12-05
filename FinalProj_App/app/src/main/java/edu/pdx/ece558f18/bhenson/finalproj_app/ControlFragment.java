@@ -122,13 +122,13 @@ public class ControlFragment extends Fragment {
         // TODO
         // timout select
 
-        setPiConnection(mIsConnected);
         return v;
     }
 
     // sets the buttons and whatnot to be enabled/disabled as appropriate
-    public void setPiConnection(boolean b) {
-        Log.d(TAG, "pi_connected state changed, now " + b);
+    public void updatePiConnectionState() {
+        boolean b = ((PagerActivity)getActivity()).mPiIsConnected;
+        if(b != mIsConnected) Log.d(TAG, "pi_connected state changed, now " + b);
         if(b) {
             mToggle.setEnabled(true);
             mStatus.setText(R.string.status_connected);
@@ -258,6 +258,7 @@ public class ControlFragment extends Fragment {
     public void onStart() {
         super.onStart();
         Log.d(TAG, "onStart()");
+        updatePiConnectionState();
     }
     @Override
     public void onStop() {

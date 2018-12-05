@@ -159,7 +159,6 @@ public class CameraFragment extends Fragment {
         mMyDatabase.child(Keys.DB_VOIP_REMOTE_URI).addValueEventListener(mRemoteUriListener);
 
 
-        setPiConnection(mIsConnected);
         return v;
     }
 
@@ -167,8 +166,9 @@ public class CameraFragment extends Fragment {
 
 
     // sets the buttons and whatnot to be enabled/disabled as appropriate
-    public void setPiConnection(boolean b) {
-        Log.d(TAG, "pi_connected state changed, now " + b);
+    public void updatePiConnectionState() {
+        boolean b = ((PagerActivity)getActivity()).mPiIsConnected;
+        if(b != mIsConnected) Log.d(TAG, "pi_connected state changed, now " + b);
         if(b) {
             // the voip button gets turned on only if i already know the destination URI
             if(mRemoteUri != null) mButtVoip.setEnabled(true);
@@ -840,6 +840,7 @@ public class CameraFragment extends Fragment {
     public void onStart() {
         super.onStart();
         Log.d(TAG, "onStart()");
+        updatePiConnectionState();
     }
     @Override
     public void onStop() {
