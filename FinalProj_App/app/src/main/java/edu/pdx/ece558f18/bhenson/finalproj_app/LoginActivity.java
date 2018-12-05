@@ -230,6 +230,7 @@ public class LoginActivity extends AppCompatActivity {
         userNode.child(Keys.DB_VOIP_REMOTE_URI).setValue("-");
         SensorListObj slo = new SensorListObj();
         userNode.child(Keys.DB_SENSOR_CONFIG).setValue(slo.toString());
+        userNode.child(Keys.DB_SOUND).setValue(false);
     }
 
     private OnCompleteListener<InstanceIdResult> mGetTokenListener = new OnCompleteListener<InstanceIdResult>() {

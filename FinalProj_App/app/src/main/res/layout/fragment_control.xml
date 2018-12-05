@@ -56,12 +56,17 @@
                     android:id="@+id/tv_timeout"
                     android:layout_weight="1"
                     android:singleLine="false"
-                    android:gravity="center_vertical"/>
+                    android:gravity="center_vertical"
+                    android:visibility="gone"/>
             <NumberPicker android:layout_width="match_parent"
                           android:layout_height="120dp"
                           android:id="@+id/picker_timeout"
-                          android:layout_weight="1"/>
+                          android:layout_weight="1"
+                          android:visibility="gone"/>
         </LinearLayout>
+        <Space
+                android:layout_width="match_parent"
+                android:layout_height="20dp"/>
         <LinearLayout
                 android:orientation="horizontal"
                 android:layout_width="match_parent"

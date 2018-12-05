@@ -70,7 +70,7 @@ public class Keys {
     public static final String DB_CAMERA_STATE ="camera/photo_pipeline_state";
     public static final String DB_VOIP_REMOTE_URI = "voip/voip_pi_uri";
     public static final String DB_SENSOR_CONFIG = "sensor_config/sensor_config_obj";
-    public static final String DB_SOUND =       "sound/signal_new_sound";
+    public static final String DB_SOUND =       "sound/new_sound";
 
 
 

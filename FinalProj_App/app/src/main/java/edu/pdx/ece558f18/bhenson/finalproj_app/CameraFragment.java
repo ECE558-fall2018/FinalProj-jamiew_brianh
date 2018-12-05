@@ -209,11 +209,11 @@ public class CameraFragment extends Fragment {
         @Override public void onClick(View v) {
             // use the same listener but either start/end call depending on state variables
             if(mIsRecording) {
-                attemptToRecord();
-            } else {
                 // if argument is true, it means stop recording and begin upload
                 // if argument is false, it means abort recording
                 stopRecording(true);
+            } else {
+                attemptToRecord();
             }
         }
     };
@@ -246,7 +246,7 @@ public class CameraFragment extends Fragment {
         // first replace the text with "end record"
         // then disp the icon
         // then begin recording, save to ?????
-        mIsRecording = true;
+        Log.d(TAG, "starting to record");
         mButtRecord.setText(R.string.end_record_label);
         mRecordIndicator.setVisibility(View.VISIBLE);
 
@@ -263,15 +263,15 @@ public class CameraFragment extends Fragment {
         } catch (IOException e) {
             Log.e(TAG, "prepare() failed");
         }
-
-
+        mIsRecording = true;
     }
 
     protected void stopRecording(boolean save) {
-        mIsRecording = false;
         // first replace the text with "begin record"
         // then hide the icon
         // then stop the recording
+        mIsRecording = false;
+        Log.d(TAG, "stopping the recording, bool=" + save);
         mButtRecord.setText(R.string.begin_record_label);
         mRecordIndicator.setVisibility(View.INVISIBLE);
 
@@ -282,12 +282,14 @@ public class CameraFragment extends Fragment {
             mRecorder = null;
         }
         if(save) {
+            // this only happens when the "stop recording" button is clicked
             // record button gets disabled until the PI is done downloading
             mButtRecord.setEnabled(false);
             mRecordProgress.setVisibility(View.VISIBLE);
             mRecordProgress.setProgress(25);
 
             // begin uploading
+            Log.d(TAG, "beginning the upload");
             mMyStorageBucket.child(Keys.FILE_SOUND).putFile(android.net.Uri.fromFile(mSoundFile)).addOnFailureListener(new OnFailureListener() {
                 @Override public void onFailure(@NonNull Exception e) {
                     // Handle unsuccessful uploads
@@ -306,6 +308,8 @@ public class CameraFragment extends Fragment {
                 }
             });
         } else {
+            // this only happens when the fragment onStop is called, or when moving to a different page
+            mRecordProgress.setVisibility(View.INVISIBLE);
             mButtRecord.setEnabled(true);
         }
     }

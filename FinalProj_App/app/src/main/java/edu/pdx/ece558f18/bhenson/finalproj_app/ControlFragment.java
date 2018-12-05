@@ -10,7 +10,10 @@ import android.util.Log;
 import android.view.LayoutInflater;
 import android.view.View;
 import android.view.ViewGroup;
-import android.widget.*;
+import android.widget.Button;
+import android.widget.CheckBox;
+import android.widget.Switch;
+import android.widget.TextView;
 import com.google.firebase.auth.FirebaseAuth;
 import com.google.firebase.database.*;
 
@@ -32,7 +35,7 @@ public class ControlFragment extends Fragment {
     private CheckBox mCheckBox;
     private Button mLogout;
     private Switch mToggle;
-    private NumberPicker mNumberPicker;
+//    private NumberPicker mNumberPicker;
     private TextView mStatus;
 
     private boolean mIsConnected;
@@ -84,7 +87,7 @@ public class ControlFragment extends Fragment {
 
         // fill all the UI variables with their objects
         TextView whoami = (TextView) v.findViewById(R.id.tv_whoami);
-        mNumberPicker = (NumberPicker) v.findViewById(R.id.picker_timeout);
+//        mNumberPicker = (NumberPicker) v.findViewById(R.id.picker_timeout);
         mCheckBox = (CheckBox) v.findViewById(R.id.cb_autologin);
         mLogout = (Button) v.findViewById(R.id.butt_logout);
         mToggle = (Switch) v.findViewById(R.id.switch_armtoggle);
@@ -97,11 +100,11 @@ public class ControlFragment extends Fragment {
         whoami.setText(getString(R.string.whoami_label, Keys.stripEmailSuffix(mAuth.getCurrentUser().getEmail())) );
 
         // numberpicker
-        // TODO: numberpicker is really hard to work with (how do i reverse the order? how do I resize the center bit????) so consider replacing with a spinner or direct input
-        // TODO: specify the values that are displayd (1/2/3/5/10/15/20, perhaps?)
-        mNumberPicker.setMaxValue(100);
-        mNumberPicker.setMinValue(0);
-        mNumberPicker.setWrapSelectorWheel(false);
+//        // TODO: numberpicker is really hard to work with (how do i reverse the order? how do I resize the center bit????) so consider replacing with a spinner or direct input
+//        // TODO: specify the values that are displayd (1/2/3/5/10/15/20, perhaps?)
+//        mNumberPicker.setMaxValue(100);
+//        mNumberPicker.setMinValue(0);
+//        mNumberPicker.setWrapSelectorWheel(false);
 
         // autologin initial value, from sharedprefs
         SharedPreferences prefs = getContext().getSharedPreferences(Keys.FILE_PREFS, Context.MODE_PRIVATE);
@@ -110,7 +113,7 @@ public class ControlFragment extends Fragment {
 
         // get initial values for armtoggle and timeout from database
         // note: this only needs to get the value for the timeout, the other listener gets the armed status
-        mMyDatabase.addListenerForSingleValueEvent(mDBListenerTimeout);
+//        mMyDatabase.addListenerForSingleValueEvent(mDBListenerTimeout);
 
         mMyDatabase.child(Keys.DB_ARMED).addValueEventListener(mDBListenerPiArmed);
 
@@ -158,29 +161,28 @@ public class ControlFragment extends Fragment {
         }
     };
 
-    // TODO: delete the timeout widget entirely!?
-    protected ValueEventListener mDBListenerTimeout = new ValueEventListener() {
-        @Override public void onDataChange(@NonNull DataSnapshot ds) {
-            Log.d(TAG, "got the initial values");
-            try {
-                //mToggle.setChecked(ds.child(Keys.DB_ARMED).getValue(Boolean.class));
-                int fromdb = ds.child(Keys.DB_TIMEOUT).getValue(Integer.class);
-                // TODO: convert # of seconds back into index
-                mNumberPicker.setValue(2);
-
-            } catch (NullPointerException npe) {
-                Log.d(TAG, "error: bad data when getting initial values", npe);
-                return;
-            } catch(DatabaseException de) {
-                Log.d(TAG, "error: something bad", de);
-                return;
-            }
-        }
-        @Override public void onCancelled(@NonNull DatabaseError de) {
-            // Failed to read value, not sure how or what to do about it
-            Log.d(TAG, "firebase error: failed to get snapshot??", de.toException());
-        }
-    };
+//    protected ValueEventListener mDBListenerTimeout = new ValueEventListener() {
+//        @Override public void onDataChange(@NonNull DataSnapshot ds) {
+//            Log.d(TAG, "got the initial values");
+//            try {
+//                //mToggle.setChecked(ds.child(Keys.DB_ARMED).getValue(Boolean.class));
+//                int fromdb = ds.child(Keys.DB_TIMEOUT).getValue(Integer.class);
+//                // TODO: convert # of seconds back into index
+//                mNumberPicker.setValue(2);
+//
+//            } catch (NullPointerException npe) {
+//                Log.d(TAG, "error: bad data when getting initial values", npe);
+//                return;
+//            } catch(DatabaseException de) {
+//                Log.d(TAG, "error: something bad", de);
+//                return;
+//            }
+//        }
+//        @Override public void onCancelled(@NonNull DatabaseError de) {
+//            // Failed to read value, not sure how or what to do about it
+//            Log.d(TAG, "firebase error: failed to get snapshot??", de.toException());
+//        }
+//    };
 
 
     private View.OnClickListener mOnClickToggleArmed = new View.OnClickListener() {
