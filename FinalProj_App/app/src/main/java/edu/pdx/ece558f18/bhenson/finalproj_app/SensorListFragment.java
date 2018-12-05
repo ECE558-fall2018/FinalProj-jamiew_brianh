@@ -150,6 +150,9 @@ public class SensorListFragment extends Fragment {
             } catch (NullPointerException npe) {
                 Log.d(TAG, "error: bad data when getting initial values", npe);
                 return;
+            } catch(DatabaseException de) {
+                Log.d(TAG, "error: something bad", de);
+                return;
             }
         }
         @Override public void onCancelled(@NonNull DatabaseError de) {

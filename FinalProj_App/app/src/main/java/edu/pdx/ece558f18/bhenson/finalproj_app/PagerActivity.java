@@ -113,6 +113,9 @@ public class PagerActivity extends AppCompatActivity
             } catch (NullPointerException npe) {
                 Log.d(TAG, "error: field doesnt exist or has bad data, " + ds.toString(), npe);
                 return;
+            } catch(DatabaseException de) {
+                Log.d(TAG, "error: something bad", de);
+                return;
             }
             Log.d(TAG, "firebase: pi_connected state changed, now " + b);
             mPiIsConnected = b;

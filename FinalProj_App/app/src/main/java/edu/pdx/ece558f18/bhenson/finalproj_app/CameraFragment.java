@@ -690,6 +690,9 @@ public class CameraFragment extends Fragment {
             } catch (NullPointerException npe) {
                 Log.d(TAG, "error: bad data when reading camera state", npe);
                 return;
+            } catch(DatabaseException de) {
+                Log.d(TAG, "error: something bad", de);
+                return;
             }
             Log.d(TAG, "new camera state: " + state);
 
