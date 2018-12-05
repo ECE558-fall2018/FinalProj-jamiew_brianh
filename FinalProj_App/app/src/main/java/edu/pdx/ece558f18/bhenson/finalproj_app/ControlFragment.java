@@ -90,6 +90,8 @@ public class ControlFragment extends Fragment {
         mToggle = (Switch) v.findViewById(R.id.switch_armtoggle);
         mStatus = (TextView) v.findViewById(R.id.tv_connection_status);
 
+        // TODO: add a toggle swtich to disable the timout feature in the database, for example if I know the system is off
+
         // initialize all UI elements that need it
         // whoami text
         whoami.setText(getString(R.string.whoami_label, Keys.stripEmailSuffix(mAuth.getCurrentUser().getEmail())) );

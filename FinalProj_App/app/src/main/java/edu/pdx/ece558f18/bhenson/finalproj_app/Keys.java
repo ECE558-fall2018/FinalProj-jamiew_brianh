@@ -37,9 +37,9 @@ public class Keys {
     public static final Boolean DEFAULT_AUTOLOGIN = true;
 
     // sip/voip stuff
-    public static final int SIP_TIMEOUT = 10;
+    public static final int SIP_TIMEOUT = 20;
     // note: the Github account is publically viewable, so for future reference these accounts may be compromised
-    public static final String SIP_DOMAIN = "sip2sip.info";
+    public static final String SIP_DOMAIN = "sip.antisip.com";
     public static final String SIP_APP_USERNAME = "nuthouse01";
     public static final String SIP_APP_PASSWORD = "applesauce1";
     public static final String SIP_PI_USERNAME = "nuthouse02";
