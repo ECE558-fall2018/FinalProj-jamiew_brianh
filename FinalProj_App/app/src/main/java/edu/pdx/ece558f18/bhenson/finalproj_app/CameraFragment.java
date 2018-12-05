@@ -4,7 +4,7 @@ import android.Manifest;
 import android.content.Context;
 import android.content.pm.PackageManager;
 import android.graphics.BitmapFactory;
-import android.net.sip.*;
+import android.media.MediaRecorder;
 import android.os.Bundle;
 import android.os.Environment;
 import android.os.Handler;
@@ -26,12 +26,12 @@ import com.google.firebase.auth.FirebaseAuth;
 import com.google.firebase.database.*;
 import com.google.firebase.storage.FirebaseStorage;
 import com.google.firebase.storage.StorageReference;
+import com.google.firebase.storage.UploadTask;
 
 import java.io.File;
 import java.io.FileNotFoundException;
 import java.io.FileOutputStream;
 import java.io.IOException;
-import java.text.ParseException;
 import java.text.SimpleDateFormat;
 import java.util.Date;
 import java.util.Locale;
@@ -55,24 +55,27 @@ public class CameraFragment extends Fragment {
     private boolean mIsConnected = false;
     private int mCameraState = 0; // not sure this is needed but whatever
     private ImageView mImageView;
-    private ImageView mCallIndicator;
+    private ImageView mRecordIndicator;
     private Button mButtManual;
     private Button mButtHires;
-    private Button mButtVoip;
-    private ProgressBar mProgressBar;
-    private ProgressBar mCallProgress;
+    private Button mButtRecord;
+    private ProgressBar mDownloadProgress;
+    private ProgressBar mRecordProgress;
     private FirebaseAuth mAuth;
     private DatabaseReference mMyDatabase;
-    private StorageReference mMyImages;
+    private StorageReference mMyStorageBucket;
     private int mAttemptCount;
 
+    private boolean mIsRecording;
+    private MediaRecorder mRecorder;
+    private File mSoundFile;
 
     // voip stuff
-    public SipManager mSipManager = null;
-    public SipProfile mSipProfile = null;
-    public boolean mVoipTalking = false;
-    public SipAudioCall mCall = null;
-    public String mRemoteUri = null;
+//    public SipManager mSipManager = null;
+//    public SipProfile mSipProfile = null;
+//    public boolean mVoipTalking = false;
+//    public SipAudioCall mCall = null;
+//    public String mRemoteUri = null;
 
     public Handler mHandler = new Handler();
 
@@ -109,15 +112,15 @@ public class CameraFragment extends Fragment {
             Log.d(TAG, "somehow lost login credentials!");
         }
         mMyDatabase = FirebaseDatabase.getInstance().getReference().child(Keys.DB_TOPFOLDER).child(mAuth.getCurrentUser().getUid());
-        mMyImages = FirebaseStorage.getInstance().getReference().child(Keys.STORAGE_TOPFOLDER).child(mAuth.getCurrentUser().getUid());
+        mMyStorageBucket = FirebaseStorage.getInstance().getReference().child(Keys.STORAGE_TOPFOLDER).child(mAuth.getCurrentUser().getUid());
 
-        if (mSipManager == null) {
-            try {
-                mSipManager = SipManager.newInstance(getContext());
-            } catch (NullPointerException npe) {
-                Log.d(TAG, "somehow lost the context, couldn't create SIP manager");
-            }
-        }
+//        if (mSipManager == null) {
+//            try {
+//                mSipManager = SipManager.newInstance(getContext());
+//            } catch (NullPointerException npe) {
+//                Log.d(TAG, "somehow lost the context, couldn't create SIP manager");
+//            }
+//        }
     }
 
     @Override
@@ -128,16 +131,19 @@ public class CameraFragment extends Fragment {
 
         // fill all the UI variables with their objects
         mImageView = (ImageView) v.findViewById(R.id.imageView);
-        mCallIndicator = (ImageView) v.findViewById(R.id.imageView_speaker);
+        mRecordIndicator = (ImageView) v.findViewById(R.id.imageView_speaker);
         mButtManual = (Button) v.findViewById(R.id.butt_manual_capture);
         mButtHires = (Button) v.findViewById(R.id.butt_hires);
-        mButtVoip = (Button) v.findViewById(R.id.butt_voip);
-        mProgressBar = (ProgressBar) v.findViewById(R.id.camera_progress);
-        mCallProgress = (ProgressBar) v.findViewById(R.id.call_progress);
+        mButtRecord = (Button) v.findViewById(R.id.butt_record);
+        mDownloadProgress = (ProgressBar) v.findViewById(R.id.camera_progress);
+        mRecordProgress = (ProgressBar) v.findViewById(R.id.call_progress);
 
         // load the imageview with the last image I saved (should exist in local storage) or if there is none then leave blank
         // set up pointer to the small file location
         try {
+            // set up a pointer to the sound file destination (local storage)
+            mSoundFile = new File(getContext().getFilesDir(), Keys.FILE_SOUND);
+            // find the existing image file
             File file = new File(getContext().getFilesDir(), Keys.FILE_SMALL);
             if (file.exists()) {
                 // pipe it into the image view
@@ -152,16 +158,15 @@ public class CameraFragment extends Fragment {
         //mButtSave.setOnClickListener(mSaveClick);
         mButtManual.setOnClickListener(mOnClickManual);
         mButtHires.setOnClickListener(mOnClickHires);
-        mButtVoip.setOnClickListener(mOnClickVoip);
-        mButtVoip.setText(R.string.begin_voip_label);
+        mButtRecord.setOnClickListener(mOnClickRecord);
+        mButtRecord.setText(R.string.begin_record_label);
 
 
         // attach the onValueChanged listener
         mMyDatabase.child(Keys.DB_CAMERA_STATE).addValueEventListener(mDBListenerCameraState);
 
         // read database to get remote URI
-        mMyDatabase.child(Keys.DB_VOIP_REMOTE_URI).addValueEventListener(mDBListenerRemoteURI);
-
+        mMyDatabase.child(Keys.DB_SOUND).addValueEventListener(mDBListenerSoundDownloadStatus);
 
         return v;
     }
@@ -174,32 +179,171 @@ public class CameraFragment extends Fragment {
         if(b != mIsConnected) Log.d(TAG, "pi_connected state changed, now " + b);
         if(b) {
             // the voip button gets turned on only if i already know the destination URI
-            if(mRemoteUri != null) mButtVoip.setEnabled(true);
+            mButtRecord.setEnabled(true);
             // the others depend on the state
             if(mCameraState == 0) {
                 mButtManual.setEnabled(true); mButtHires.setEnabled(false);
-                mProgressBar.setVisibility(View.INVISIBLE);
+                mDownloadProgress.setVisibility(View.INVISIBLE);
             } else if(mCameraState == 3) {
                 mButtManual.setEnabled(true); mButtHires.setEnabled(true);
-                mProgressBar.setVisibility(View.INVISIBLE);
+                mDownloadProgress.setVisibility(View.INVISIBLE);
             } else {
                 mButtManual.setEnabled(false); mButtHires.setEnabled(false);
-                mProgressBar.setVisibility(View.VISIBLE);
+                mDownloadProgress.setVisibility(View.VISIBLE);
             }
         } else {
             // disable the buttons, regardless of what state the camera is in
-            mButtVoip.setEnabled(false);
+            mButtRecord.setEnabled(false);
             mButtManual.setEnabled(false); mButtHires.setEnabled(false);
-            mProgressBar.setVisibility(View.INVISIBLE);
-            mCallProgress.setVisibility(View.INVISIBLE);
+            mDownloadProgress.setVisibility(View.INVISIBLE);
+            mRecordProgress.setVisibility(View.INVISIBLE);
         }
         mIsConnected = b;
     }
 
     // ===========================================================================================================
+    // recording stuff
+
+
+    private View.OnClickListener mOnClickRecord = new View.OnClickListener() {
+        @Override public void onClick(View v) {
+            // use the same listener but either start/end call depending on state variables
+            if(mIsRecording) {
+                attemptToRecord();
+            } else {
+                // if argument is true, it means stop recording and begin upload
+                // if argument is false, it means abort recording
+                stopRecording(true);
+            }
+        }
+    };
+
+    protected void attemptToRecord() {
+        // called by the PagerActivity on permissions return
+        // stage 1: check permissions
+        if(requestPermissionsForRecord()) {
+            // if it succeeds, then proceed
+            actuallyRecord();
+        }
+    }
+
+    private boolean requestPermissionsForRecord() {
+        // to request a download of the hires image, first need to get permissions
+        if (ContextCompat.checkSelfPermission(getActivity(), Manifest.permission.RECORD_AUDIO) != PackageManager.PERMISSION_GRANTED) {
+            Log.d(TAG, "need to request write permissions");
+            ActivityCompat.requestPermissions(getActivity(),
+                    new String[]{Manifest.permission.RECORD_AUDIO},
+                    Keys.PERM_REQ_RECORD_AUDIO);
+            // the result is returned to onRequestPermissionsResult on the activity level
+        } else {
+            return true;
+        }
+        return false;
+    }
+
+
+    private void actuallyRecord() {
+        // first replace the text with "end record"
+        // then disp the icon
+        // then begin recording, save to ?????
+        mIsRecording = true;
+        mButtRecord.setText(R.string.end_record_label);
+        mRecordIndicator.setVisibility(View.VISIBLE);
+
+        // start a recording
+        mRecorder = new MediaRecorder();
+        mRecorder.setAudioSource(MediaRecorder.AudioSource.MIC);
+        mRecorder.setOutputFormat(MediaRecorder.OutputFormat.THREE_GPP); // dunno what this does
+        mRecorder.setOutputFile(mSoundFile.getAbsolutePath());
+        mRecorder.setAudioEncoder(MediaRecorder.AudioEncoder.AMR_NB); // dunno what this is
+
+        try {
+            mRecorder.prepare();
+            mRecorder.start();
+        } catch (IOException e) {
+            Log.e(TAG, "prepare() failed");
+        }
+
+
+    }
+
+    protected void stopRecording(boolean save) {
+        mIsRecording = false;
+        // first replace the text with "begin record"
+        // then hide the icon
+        // then stop the recording
+        mButtRecord.setText(R.string.begin_record_label);
+        mRecordIndicator.setVisibility(View.INVISIBLE);
+
+        // stop a recording
+        if(mRecorder != null) {
+            mRecorder.stop();
+            mRecorder.release();
+            mRecorder = null;
+        }
+        if(save) {
+            // record button gets disabled until the PI is done downloading
+            mButtRecord.setEnabled(false);
+            mRecordProgress.setVisibility(View.VISIBLE);
+            mRecordProgress.setProgress(25);
+
+            // begin uploading
+            mMyStorageBucket.child(Keys.FILE_SOUND).putFile(android.net.Uri.fromFile(mSoundFile)).addOnFailureListener(new OnFailureListener() {
+                @Override public void onFailure(@NonNull Exception e) {
+                    // Handle unsuccessful uploads
+                    Log.d(TAG, "failed to upload", e);
+                    mButtRecord.setEnabled(true);
+                }
+            }).addOnSuccessListener(new OnSuccessListener<UploadTask.TaskSnapshot>() {
+                @Override public void onSuccess(UploadTask.TaskSnapshot taskSnapshot) {
+                    // taskSnapshot.getMetadata() contains file metadata such as size, content-type, etc.
+                    Log.d(TAG, "successfully uploaded the sound file!!! size=" + taskSnapshot.getBytesTransferred());
+                    // when done uploading, then i set the field to TRUE to signal the pi to start downloading
+                    mMyDatabase.child(Keys.DB_SOUND).setValue(true);
+                    mButtRecord.setEnabled(true);
+                    mRecordProgress.setVisibility(View.VISIBLE);
+                    mRecordProgress.setProgress(60);
+                }
+            });
+        } else {
+            mButtRecord.setEnabled(true);
+        }
+    }
+
+    private ValueEventListener mDBListenerSoundDownloadStatus = new ValueEventListener() {
+        @Override public void onDataChange(@NonNull DataSnapshot ds) {
+            // listening to the "photos/signal_new_sound" field
+            boolean b;
+            try {
+                b = ds.getValue(Boolean.class);
+            } catch (NullPointerException npe) {
+                Log.d(TAG, "error: field doesnt exist or has bad data, " + ds.toString(), npe);
+                return;
+            } catch(DatabaseException de) {
+                Log.d(TAG, "error: something bad", de);
+                return;
+            }
+            if(b) {
+                // i set this to true, ignore it
+                mButtRecord.setEnabled(false);
+            } else {
+                // pi sets it to be false when it is done downloading, so i can re-enable the button and disable any progress bar
+                mButtRecord.setEnabled(true);
+                mRecordProgress.setVisibility(View.INVISIBLE);
+            }
+        }
+
+        @Override public void onCancelled(@NonNull DatabaseError de) {
+            // Failed to read value, not sure how or what to do about it
+            Log.d(TAG, "firebase error: failed to get snapshot??", de.toException());
+        }
+    };
+
+
+    // ===========================================================================================================
     // voip stuff
 
-
+    /*
     private View.OnClickListener mOnClickVoip = new View.OnClickListener() {
         @Override public void onClick(View v) {
             // use the same listener but either start/end call depending on state variables
@@ -288,8 +432,8 @@ public class CameraFragment extends Fragment {
 
 
     private void createSipProfile() {
-        mCallProgress.setVisibility(View.VISIBLE);
-        mCallProgress.setProgress(20);
+        mRecordProgress.setVisibility(View.VISIBLE);
+        mRecordProgress.setProgress(20);
 
         Log.d(TAG, "CAN WE DO IT " + SipManager.isApiSupported(getContext()) + " AND " + SipManager.isVoipSupported(getContext()));
 
@@ -312,7 +456,7 @@ public class CameraFragment extends Fragment {
         // stage 2: register the profile
         // stage 2.5: actually do the thing AFTER the listener is set up
         // stage 3: wait for registration result
-        mCallProgress.setProgress(30);
+        mRecordProgress.setProgress(30);
         Log.d(TAG, "beginning registration");
         try {
             // this is open for send only
@@ -357,7 +501,7 @@ public class CameraFragment extends Fragment {
 
     private void actuallyMakeTheCall() {
         Log.d(TAG, "placing call to base station");
-        mCallProgress.setProgress(60);
+        mRecordProgress.setProgress(60);
         try {
             mCall = mSipManager.makeAudioCall(mSipProfile.getUriString(), mRemoteUri, mSipListenerAudioCall, Keys.SIP_TIMEOUT);
         } catch (SipException se) {
@@ -373,11 +517,9 @@ public class CameraFragment extends Fragment {
         @Override public void onCallEstablished(SipAudioCall call) {
             super.onCallEstablished(call);
             call.startAudio();
-            // TODO: determine whether "speaker mode" means normal/loud, or enable/disable speakers
             call.setSpeakerMode(true);
             //if(!call.isMuted()) {
                 // if not muted, be muted (does this mute the speaker or the mic? unclear)
-                // TODO: determine whether this mutes the speaker or the mic
                 call.toggleMute();
             //}
             mVoipTalking = true;
@@ -405,22 +547,22 @@ public class CameraFragment extends Fragment {
         @Override public void run() {
             mButtVoip.setEnabled(true);
             mButtVoip.setText(R.string.end_voip_label);
-            mCallProgress.setProgress(99);
+            mRecordProgress.setProgress(99);
             // show the image
-            mCallIndicator.setVisibility(View.VISIBLE);
+            mRecordIndicator.setVisibility(View.VISIBLE);
         }
     };
-    private Runnable gui2 = new Runnable() {@Override public void run() { mButtVoip.setEnabled(mIsConnected && mRemoteUri!=null); mCallProgress.setVisibility(View.INVISIBLE); }};
-    private Runnable gui3 = new Runnable() {@Override public void run() { mCallProgress.setProgress(40); }};
-    private Runnable gui4 = new Runnable() {@Override public void run() { mCallProgress.setProgress(70); }};
+    private Runnable gui2 = new Runnable() {@Override public void run() { mButtVoip.setEnabled(mIsConnected && mRemoteUri!=null); mRecordProgress.setVisibility(View.INVISIBLE); }};
+    private Runnable gui3 = new Runnable() {@Override public void run() { mRecordProgress.setProgress(40); }};
+    private Runnable gui4 = new Runnable() {@Override public void run() { mRecordProgress.setProgress(70); }};
 
     protected void actuallyEndTheCall() {
         // note: this is called in onStop here and onPageChanged of the PagerActivity
         mVoipTalking = false;
         mHandler.post(gui2);
-        mButtVoip.setText(R.string.begin_voip_label);
+        mButtVoip.setText(R.string.begin_record_label);
         // hide the image
-        mCallIndicator.setVisibility(View.INVISIBLE);
+        mRecordIndicator.setVisibility(View.INVISIBLE);
 
         if (mSipManager == null) { return; } // this should never be hit but let's be extra sure
 
@@ -463,6 +605,7 @@ public class CameraFragment extends Fragment {
             Log.d(TAG, "firebase error: failed to get snapshot??", de.toException());
         }
     };
+    */
 
     // ===========================================================================================================
     // photo stuff
@@ -527,15 +670,15 @@ public class CameraFragment extends Fragment {
 
     private void beginDownloadSmallImage(String s) {
         final String sf = s;
-        Log.d(TAG, "beginning to download, firebase path = " + mMyImages.child(sf).getPath());
+        Log.d(TAG, "beginning to download, firebase path = " + mMyStorageBucket.child(sf).getPath());
 
         // this whole thing runs asynchronously
-        mMyImages.child(sf).getBytes(TWO_MEGABYTE).addOnSuccessListener(new OnSuccessListener<byte[]>() {
+        mMyStorageBucket.child(sf).getBytes(TWO_MEGABYTE).addOnSuccessListener(new OnSuccessListener<byte[]>() {
             @Override
             public void onSuccess(byte[] bytes) {
                 // Data for "images/island.jpg" is returned, use this as needed
                 Log.d(TAG, "done downloading lores image, size = " + bytes.length);
-                mProgressBar.setProgress(15);
+                mDownloadProgress.setProgress(15);
 
                 // part 1: save it into local storage
                 saveImageToLocal(sf, bytes);
@@ -578,15 +721,15 @@ public class CameraFragment extends Fragment {
 
     private void beginDownloadBigImage(String s) {
         final String sf = s;
-        Log.d(TAG, "beginning to download " + mMyImages.child(sf).getPath());
+        Log.d(TAG, "beginning to download " + mMyStorageBucket.child(sf).getPath());
 
         // this whole thing runs asynchronously
-        mMyImages.child(sf).getBytes(TWO_MEGABYTE).addOnSuccessListener(new OnSuccessListener<byte[]>() {
+        mMyStorageBucket.child(sf).getBytes(TWO_MEGABYTE).addOnSuccessListener(new OnSuccessListener<byte[]>() {
             @Override
             public void onSuccess(byte[] bytes) {
                 // Data for "images/island.jpg" is returned, use this as needed
                 Log.d(TAG, "done downloading hires image, size = " + bytes.length);
-                mProgressBar.setProgress(90);
+                mDownloadProgress.setProgress(90);
 
                 // part 1: save it into external storage
                 saveImageToExternal(bytes);
@@ -642,8 +785,8 @@ public class CameraFragment extends Fragment {
         @Override public void onClick(View v) {
             // to request a photo be taken, simply move to state 1
             mMyDatabase.child(Keys.DB_CAMERA_STATE).setValue(1);
-            mProgressBar.setVisibility(View.VISIBLE);
-            mProgressBar.setProgress(15);
+            mDownloadProgress.setVisibility(View.VISIBLE);
+            mDownloadProgress.setProgress(15);
             mButtManual.setEnabled(false); mButtHires.setEnabled(false);
         }
     };
@@ -661,8 +804,8 @@ public class CameraFragment extends Fragment {
             // if I do somehow have permission, then do the thing right now
             // set state to 4 to begin the download operation
             mMyDatabase.child(Keys.DB_CAMERA_STATE).setValue(4);
-            mProgressBar.setVisibility(View.VISIBLE);
-            mProgressBar.setProgress(15);
+            mDownloadProgress.setVisibility(View.VISIBLE);
+            mDownloadProgress.setProgress(15);
             mButtManual.setEnabled(false); mButtHires.setEnabled(false);
         }
     }
@@ -702,7 +845,7 @@ public class CameraFragment extends Fragment {
 
                     // enable manual, disable hires
                     if(mIsConnected) { mButtManual.setEnabled(true); mButtHires.setEnabled(false); }
-                    mProgressBar.setVisibility(View.INVISIBLE);
+                    mDownloadProgress.setVisibility(View.INVISIBLE);
                     break;
                 case 1:
                     // manually requested a photo be taken, pi is currently busy uploading the image
@@ -711,8 +854,8 @@ public class CameraFragment extends Fragment {
                     // both buttons disabled (taken care of in on-click listener AND here)
                     if(mIsConnected) {
                         mButtManual.setEnabled(false); mButtHires.setEnabled(false);
-                        mProgressBar.setVisibility(View.VISIBLE);
-                        mProgressBar.setProgress(15);
+                        mDownloadProgress.setVisibility(View.VISIBLE);
+                        mDownloadProgress.setProgress(15);
                     }
                     // i did this
                     Log.d(TAG, "1: my write to the database triggered my own listener");
@@ -723,8 +866,8 @@ public class CameraFragment extends Fragment {
                     // disable both buttons
                     if(mIsConnected) {
                         mButtManual.setEnabled(false); mButtHires.setEnabled(false);
-                        mProgressBar.setVisibility(View.VISIBLE);
-                        mProgressBar.setProgress(60);
+                        mDownloadProgress.setVisibility(View.VISIBLE);
+                        mDownloadProgress.setProgress(60);
                     }
 
                     // download (how? async task?)
@@ -740,7 +883,7 @@ public class CameraFragment extends Fragment {
 
                     // both buttons ENABLED (if connected to Pi)(taken care of in previous stage AND here)
                     if(mIsConnected) { mButtManual.setEnabled(true); mButtHires.setEnabled(true); }
-                    mProgressBar.setVisibility(View.INVISIBLE);
+                    mDownloadProgress.setVisibility(View.INVISIBLE);
 
                     if(mCameraState == 2) Log.d(TAG, "3: my write to the database triggered my own listener"); // i did this
                     if(mCameraState == 0) Log.d(TAG, "3: entered the pipeline at this stage");
@@ -752,8 +895,8 @@ public class CameraFragment extends Fragment {
                     // both buttons disabled (taken care of in on-click listener AND here)
                     if(mIsConnected) {
                         mButtManual.setEnabled(false); mButtHires.setEnabled(false);
-                        mProgressBar.setVisibility(View.VISIBLE);
-                        mProgressBar.setProgress(15);
+                        mDownloadProgress.setVisibility(View.VISIBLE);
+                        mDownloadProgress.setProgress(15);
                     }
                     // i did this
                     Log.d(TAG, "4: my write to the database triggered my own listener");
@@ -764,8 +907,8 @@ public class CameraFragment extends Fragment {
                     // disable both buttons
                     if(mIsConnected) {
                         mButtManual.setEnabled(false); mButtHires.setEnabled(false);
-                        mProgressBar.setVisibility(View.VISIBLE);
-                        mProgressBar.setProgress(60);
+                        mDownloadProgress.setVisibility(View.VISIBLE);
+                        mDownloadProgress.setProgress(60);
                     }
                     // download (how? async task?)
                     // save to external storage, AKA photo gallery (what file name should I use?)
@@ -835,7 +978,8 @@ public class CameraFragment extends Fragment {
         super.onStop();
         Log.d(TAG, "onStop()");
         // call this function whenever the app stops (lock screen for example)
-        actuallyEndTheCall();
+        //actuallyEndTheCall();
+        stopRecording(false);
     }
     @Override
     public void onDestroy() {

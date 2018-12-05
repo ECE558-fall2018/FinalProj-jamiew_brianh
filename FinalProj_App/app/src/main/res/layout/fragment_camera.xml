@@ -47,7 +47,7 @@
                 android:text="@string/error"
                 android:layout_width="match_parent"
                 android:layout_height="wrap_content"
-                android:id="@+id/butt_voip"
+                android:id="@+id/butt_record"
                 android:enabled="false"/>
         <ImageView
                 android:src="@drawable/speaker_v2"

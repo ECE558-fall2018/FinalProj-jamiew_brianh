@@ -97,7 +97,7 @@ public class PagerActivity extends AppCompatActivity
             if(i != 2) {
                 if(mSectionsPagerAdapter.getRegisteredFragment(2) != null) {
                     CameraFragment f = (CameraFragment) mSectionsPagerAdapter.getRegisteredFragment(2);
-                    f.actuallyEndTheCall();
+                    f.stopRecording(false);
                 }
             }
         }
@@ -164,6 +164,22 @@ public class PagerActivity extends AppCompatActivity
                 return;
             }
 
+            case Keys.PERM_REQ_RECORD_AUDIO: {
+                // If request is cancelled, the result arrays are empty.
+                if (grantResults.length > 0 && grantResults[0] == PackageManager.PERMISSION_GRANTED) {
+                    // permission was granted, yay!
+                    Log.d(TAG, "permission accepted for RECORD_AUDIO");
+                    if(mSectionsPagerAdapter.getRegisteredFragment(2) != null) {
+                        ((CameraFragment) mSectionsPagerAdapter.getRegisteredFragment(2)).attemptToRecord();
+                    }
+                } else {
+                    // permission denied, boo! do nothing I suppose
+                    Log.d(TAG, "permission denied for RECORD_AUDIO");
+                }
+                return;
+            }
+
+            /*
             case Keys.PERM_REQ_USE_SIP: {
                 // If request is cancelled, the result arrays are empty.
                 if (grantResults.length > 0 && grantResults[0] == PackageManager.PERMISSION_GRANTED) {
@@ -190,21 +206,6 @@ public class PagerActivity extends AppCompatActivity
                 } else {
                     // permission denied, boo! do nothing I suppose
                     Log.d(TAG, "permission denied for INTERNET");
-                }
-                return;
-            }
-
-            case Keys.PERM_REQ_RECORD_AUDIO: {
-                // If request is cancelled, the result arrays are empty.
-                if (grantResults.length > 0 && grantResults[0] == PackageManager.PERMISSION_GRANTED) {
-                    // permission was granted, yay!
-                    Log.d(TAG, "permission accepted for RECORD_AUDIO");
-                    if(mSectionsPagerAdapter.getRegisteredFragment(2) != null) {
-                        ((CameraFragment) mSectionsPagerAdapter.getRegisteredFragment(2)).attemptToCall();
-                    }
-                } else {
-                    // permission denied, boo! do nothing I suppose
-                    Log.d(TAG, "permission denied for RECORD_AUDIO");
                 }
                 return;
             }
@@ -253,7 +254,7 @@ public class PagerActivity extends AppCompatActivity
                 }
                 return;
             }
-
+            */
             // other 'case' lines to check for other
             // permissions this app might request.
         }
@@ -267,7 +268,7 @@ public class PagerActivity extends AppCompatActivity
         // first, gotta unregister any listeners i think?????
         mMyDatabase.child(Keys.DB_CONNECTED).removeEventListener(mDBListenerPiConnected);
         mMyDatabase.child(Keys.DB_CAMERA_STATE).removeEventListener(((CameraFragment)mSectionsPagerAdapter.getRegisteredFragment(2)).mDBListenerCameraState);
-        mMyDatabase.child(Keys.DB_VOIP_REMOTE_URI).removeEventListener(((CameraFragment)mSectionsPagerAdapter.getRegisteredFragment(2)).mDBListenerRemoteURI);
+        //mMyDatabase.child(Keys.DB_VOIP_REMOTE_URI).removeEventListener(((CameraFragment)mSectionsPagerAdapter.getRegisteredFragment(2)).mDBListenerRemoteURI);
         mMyDatabase.child(Keys.DB_ARMED).removeEventListener(((ControlFragment)mSectionsPagerAdapter.getRegisteredFragment(1)).mDBListenerPiArmed);
 
         // TODO: delete apptoken from the Database? otherwise I will continue to receive notifications after I log out

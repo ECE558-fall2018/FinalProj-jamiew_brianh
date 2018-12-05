@@ -21,6 +21,7 @@ public class Keys {
     public static final String FILE_MED =   "img_1800x1200.jpg";
     public static final String FILE_BIG =   "img_3200x2400.jpg";
     public static final String DIR_PUBLIC = "SecurityApp";
+    public static final String FILE_SOUND = "custom_alarm_sound.3gp";
 
     public static final int MAX_RETRY_CT = 4;
     public static final int ID_NOTIFY_ACTIVE = 119;
@@ -63,14 +64,13 @@ public class Keys {
 
     public static final String DB_EMAIL =       "email";
     public static final String DB_APPTOKEN =    "apptoken";
-    public static final String DB_TIMESTAMP =   "pi_timestamp";
     public static final String DB_ARMED =       "pi_armed";
     public static final String DB_TRIGGERED =   "pi_triggered";
     public static final String DB_CONNECTED =   "pi_connected";
-    public static final String DB_TIMEOUT =     "timeout_threshold";
     public static final String DB_CAMERA_STATE ="camera/photo_pipeline_state";
     public static final String DB_VOIP_REMOTE_URI = "voip/voip_pi_uri";
     public static final String DB_SENSOR_CONFIG = "sensor_config/sensor_config_obj";
+    public static final String DB_SOUND =       "sound/signal_new_sound";
 
 
 
