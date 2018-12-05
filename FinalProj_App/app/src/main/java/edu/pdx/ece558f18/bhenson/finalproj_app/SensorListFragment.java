@@ -264,7 +264,6 @@ public class SensorListFragment extends Fragment {
     public void onDetach() {
         super.onDetach();
         Log.d(TAG, "onDetatch()");
-
     }
     @Override
     public void onStart() {

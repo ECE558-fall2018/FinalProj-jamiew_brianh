@@ -252,7 +252,6 @@ public class ControlFragment extends Fragment {
         super.onDetach();
         mListener = null;
         Log.d(TAG, "onDetatch()");
-
     }
     @Override
     public void onStart() {
