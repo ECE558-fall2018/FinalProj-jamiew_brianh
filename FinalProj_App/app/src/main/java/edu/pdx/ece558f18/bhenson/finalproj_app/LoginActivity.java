@@ -4,6 +4,7 @@ import android.content.Context;
 import android.content.Intent;
 import android.content.SharedPreferences;
 import android.os.Bundle;
+import android.os.Handler;
 import android.support.annotation.NonNull;
 import android.support.v7.app.AppCompatActivity;
 import android.util.Log;
@@ -29,6 +30,8 @@ public class LoginActivity extends AppCompatActivity {
     private EditText mUsernameBox;
     private EditText mPasswordBox;
     private ProgressBar mProgressBar;
+
+    public Handler mHandler = new Handler();
 
     private FirebaseAuth mAuth;
     private DatabaseReference mDatabase;
@@ -68,11 +71,8 @@ public class LoginActivity extends AppCompatActivity {
         // If a notification message is tapped, any data accompanying the notification
         // message is available in the intent extras. In this sample the launcher
         // intent is fired when the notification is tapped, so any accompanying data would
-        // be handled here. If you want a different intent fired, set the click_action
-        // field of the notification message to the desired intent. The launcher intent
-        // is used when no click_action is specified.
+        // be handled here.
         //
-        // Handle possible data accompanying notification message.
         // [START handle_data_extras]
         if (getIntent().getExtras() != null) {
             for (String key : getIntent().getExtras().keySet()) {
@@ -80,6 +80,10 @@ public class LoginActivity extends AppCompatActivity {
                 Log.d(TAG, "Key: " + key + " Value: " + value);
             }
             int z = -1;
+            // Keys.KEY_GOTOPAGE is the only extra i care about
+            // it may hold an int(created by clicking a notification i created)
+            // it may hold an int disguised as a string (created by notification that was received while app was inactive)
+            // it may not exist (not started by clicking on a notification)
             try {
                 z = Integer.parseInt(getIntent().getStringExtra(Keys.KEY_GOTOPAGE));
             } catch(NumberFormatException nfe) {
@@ -88,26 +92,36 @@ public class LoginActivity extends AppCompatActivity {
             }
             Log.d(TAG, "z=" + z);
             if(z >= 0 && z <= 2) {
+                // if there was a value, then save it (will be put into the intent handed to the pager activity)
                 mNextPage = z;
             }
         }
         // [END handle_data_extras]
 
-
-
     }
 
 
+    // TODO: try making a handler that runs the progress bar updates, see if that makes it animate?
 
     // function: launch next activity
     private void proceedToApp() {
         Intent next = new Intent(LoginActivity.this, PagerActivity.class);
-        // add the extra I got from the launching intent (if there are any)
+        // add the extra I got from the launching intent
         next.putExtra(Keys.KEY_GOTOPAGE, mNextPage);
         startActivity(next);
+        // finish myself so that the back button won't return to this login page (want this whole app to work without any back-stack nonsense)
         finish();
         return;
     }
+
+    // NOTE: any calls to the gui either do nothing or actually crash when made inside the sign-in and get-token listeners (apparently thats a separate thread? idk)
+    // however putting those gui updates into simple Runnables that immediately run on the main thread will work
+    // so that's why i have these ugly things
+    // NOTE2: the Database callback functions do support UI calls (usually)
+    private Runnable gui50 = new Runnable() {@Override public void run() { mProgressBar.setProgress(50); }};
+    private Runnable gui75 = new Runnable() {@Override public void run() { mProgressBar.setProgress(75); }};
+    private Runnable gui99 = new Runnable() {@Override public void run() { mProgressBar.setProgress(99); }};
+    private Runnable gui1 = new Runnable() {@Override public void run() { mProgressBar.setVisibility(View.INVISIBLE); }};
 
 
     // function: attempt login, if successful then save the user/pass
@@ -117,7 +131,7 @@ public class LoginActivity extends AppCompatActivity {
         final String pass_f = pass;
 
         // firebase requires that it be a plausible "email" rather than just a username
-        String email = username + Keys.EMAIL_SUFFIX; // this needs to actually look like an email for some reason
+        String email = username + Keys.EMAIL_SUFFIX;
 
         // firebase requires that passwords be 6 chars or longer
         if(pass.length() < 6) {
@@ -130,6 +144,7 @@ public class LoginActivity extends AppCompatActivity {
         mSubmitButton.setEnabled(false);
         mUsernameBox.setEnabled(false);
         mPasswordBox.setEnabled(false);
+        // enable the progress bar
         mProgressBar.setVisibility(View.VISIBLE);
         mProgressBar.setProgress(25);
 
@@ -137,7 +152,8 @@ public class LoginActivity extends AppCompatActivity {
         mAuth.signInWithEmailAndPassword(email, pass).addOnCompleteListener(this, new OnCompleteListener<AuthResult>() {
             @Override public void onComplete(@NonNull Task<AuthResult> task) {
                 if (task.isSuccessful()) {
-                    mProgressBar.setProgress(50);
+                    //mProgressBar.setProgress(50);
+                    mHandler.post(gui50);
                     // Sign in success, update UI with the signed-in user's information
                     Log.d(TAG, "signInWithEmail:success");
                     Log.d(TAG, "UUID = " + mAuth.getCurrentUser().getUid());
@@ -150,58 +166,46 @@ public class LoginActivity extends AppCompatActivity {
                     e.apply();
 
                     DatabaseReference userNode = mDatabase.child(Keys.DB_TOPFOLDER).child(mAuth.getCurrentUser().getUid());
-                    userNode.addListenerForSingleValueEvent(verifyNodeExists);
+                    userNode.addListenerForSingleValueEvent(mDBVerifyNodeExistsAndCreateIfMissing);
                 } else {
                     // If sign in fails, display a message to the user.
                     Log.w(TAG, "signInWithEmail:failure", task.getException());
                     Toast.makeText(LoginActivity.this, R.string.login_failure, Toast.LENGTH_SHORT).show();
+                    //mProgressBar.setVisibility(View.INVISIBLE);
+                    mHandler.post(gui1);
                 }
 
                 // re-enable these elements
                 mSubmitButton.setEnabled(true);
                 mUsernameBox.setEnabled(true);
                 mPasswordBox.setEnabled(true);
-                mProgressBar.setVisibility(View.INVISIBLE);
             }
         });
     }
 
 
-    private ValueEventListener verifyNodeExists = new ValueEventListener() {
+    private ValueEventListener mDBVerifyNodeExistsAndCreateIfMissing = new ValueEventListener() {
         @Override public void onDataChange(@NonNull DataSnapshot ds) {
-            mProgressBar.setProgress(75);
+            //mProgressBar.setProgress(75);
+            mHandler.post(gui75);
             // verify that the node exists... if it doesn't exist, then create default fields for everything it will need!
             // if the 'email' field is null then assume the whole thing is missing
             if(ds.child(Keys.DB_EMAIL).getValue() == null) {
-                Log.d(TAG, "creating default database structures");
-                // create the node with default values
-                DatabaseReference userNode = mDatabase.child(Keys.DB_TOPFOLDER).child(mAuth.getCurrentUser().getUid());
-                // dont need to create email or apptoken, those created below
-                //userNode.child(Keys.DB_EMAIL);
-                //userNode.child(Keys.DB_APPTOKEN);
-                userNode.child(Keys.DB_TIMESTAMP).setValue("err");
-                userNode.child(Keys.DB_ARMED).setValue(false);
-                userNode.child(Keys.DB_TRIGGERED).setValue(false);
-                userNode.child(Keys.DB_CONNECTED).setValue(false);
-                userNode.child(Keys.DB_TIMEOUT).setValue(10);
-                userNode.child(Keys.DB_CAMERA_STATE).setValue(0);
-                userNode.child(Keys.DB_VOIP_REMOTE_URI).setValue("-");
-                SensorListObj slo = new SensorListObj();
-                userNode.child(Keys.DB_SENSOR_CONFIG).setValue(slo.toString());
+                initDBNode();
             }
 
             // once I have logged in and know my UUID then I should try to send the MessagingService token to the database
             // manually get the token
 
             // in the app, use:
-            FirebaseInstanceId.getInstance().getInstanceId().addOnCompleteListener(afterGetToken);
+            FirebaseInstanceId.getInstance().getInstanceId().addOnCompleteListener(mGetTokenListener);
             // in the pi, use:
             //proceedToApp();
             // re-enable these elements
             mSubmitButton.setEnabled(true);
             mUsernameBox.setEnabled(true);
             mPasswordBox.setEnabled(true);
-            mProgressBar.setVisibility(View.INVISIBLE);
+            //mProgressBar.setVisibility(View.INVISIBLE);
 
         }
         @Override public void onCancelled(@NonNull DatabaseError de) {
@@ -210,13 +214,32 @@ public class LoginActivity extends AppCompatActivity {
         }
     };
 
-    private OnCompleteListener<InstanceIdResult> afterGetToken = new OnCompleteListener<InstanceIdResult>() {
+    private void initDBNode() {
+        Log.d(TAG, "creating default database structures");
+        // create the node with default values
+        DatabaseReference userNode = mDatabase.child(Keys.DB_TOPFOLDER).child(mAuth.getCurrentUser().getUid());
+        // dont need to create email or apptoken, those created below
+        //userNode.child(Keys.DB_EMAIL);
+        //userNode.child(Keys.DB_APPTOKEN);
+        //userNode.child(Keys.DB_TIMESTAMP).setValue("err");
+        userNode.child(Keys.DB_ARMED).setValue(false);
+        userNode.child(Keys.DB_TRIGGERED).setValue(false);
+        userNode.child(Keys.DB_CONNECTED).setValue(false);
+        //userNode.child(Keys.DB_TIMEOUT).setValue(10);
+        userNode.child(Keys.DB_CAMERA_STATE).setValue(0);
+        userNode.child(Keys.DB_VOIP_REMOTE_URI).setValue("-");
+        SensorListObj slo = new SensorListObj();
+        userNode.child(Keys.DB_SENSOR_CONFIG).setValue(slo.toString());
+    }
+
+    private OnCompleteListener<InstanceIdResult> mGetTokenListener = new OnCompleteListener<InstanceIdResult>() {
         @Override public void onComplete(@NonNull Task<InstanceIdResult> task) {
             if (!task.isSuccessful()) {
                 Log.w(TAG, "getInstanceId failed", task.getException());
                 return;
             }
-            mProgressBar.setProgress(100);
+            //mProgressBar.setProgress(99);
+            mHandler.post(gui99);
             // Get the Instance ID token
             String token = task.getResult().getToken();
             Log.d(TAG, "token= " + token);
@@ -262,10 +285,12 @@ public class LoginActivity extends AppCompatActivity {
         Log.d(TAG, "onStart()");
         SharedPreferences prefs = getSharedPreferences(Keys.FILE_PREFS, Context.MODE_PRIVATE);
         boolean autologin = prefs.getBoolean(Keys.KEY_AUTOLOGIN, Keys.DEFAULT_AUTOLOGIN);
+        // has the user configured it so they automatically log in if possible?
         if(autologin) {
             FirebaseUser currentUser = mAuth.getCurrentUser();
             if (currentUser != null) {
                 // somehow already logged in, not sure how but I'll accept it!
+                // no need to validate stuff, if they're already logged in they went thru that whole chain once
                 Log.d(TAG, "FirebaseAuth still valid, proceeding to pager");
                 proceedToApp();
                 return;

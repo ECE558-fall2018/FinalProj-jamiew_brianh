@@ -81,15 +81,15 @@ public class SensorListFragment extends Fragment {
         mApply = (Button) v.findViewById(R.id.butt_apply);
         mReset = (Button) v.findViewById(R.id.butt_reset);
 
-        mApply.setOnClickListener(mApplyListener);
-        mReset.setOnClickListener(mResetListener);
+        mApply.setOnClickListener(mOnClickApply);
+        mReset.setOnClickListener(mOnClickReset);
 
         mSensorListObj_master = new SensorListObj(0);
         // create the temp as a copy of the master
         mSensorListObj_temp = new SensorListObj(mSensorListObj_master);
 
         // get the sensor object from the database, the list is empty until that happens
-        mMyDatabase.child(Keys.DB_SENSOR_CONFIG).addListenerForSingleValueEvent(mInitSensConfig);
+        mMyDatabase.child(Keys.DB_SENSOR_CONFIG).addListenerForSingleValueEvent(mDBListenerSensrConfig);
 
         return v;
 
@@ -102,8 +102,7 @@ public class SensorListFragment extends Fragment {
 
 
     // sets the buttons and whatnot to be enabled/disabled as appropriate
-    public void updatePiConnectionState() {
-        boolean b = ((PagerActivity)getActivity()).mPiIsConnected;
+    public void updatePiConnectionState(boolean b) {
         // if _temp and _master are the different, then enable both buttons... otherwise, disable both buttons
         if(b != mIsConnected) Log.d(TAG, "pi_connected state changed, now " + b);
         if(!mSensorListObj_master.equals(mSensorListObj_temp) && b) {
@@ -117,7 +116,7 @@ public class SensorListFragment extends Fragment {
     }
 
 
-    protected ValueEventListener mInitSensConfig = new ValueEventListener() {
+    protected ValueEventListener mDBListenerSensrConfig = new ValueEventListener() {
         @Override public void onDataChange(@NonNull DataSnapshot ds) {
             Log.d(TAG, "got the initial values");
             try {
@@ -147,7 +146,7 @@ public class SensorListFragment extends Fragment {
     };
 
 
-    View.OnClickListener mResetListener = new View.OnClickListener() {
+    private View.OnClickListener mOnClickReset = new View.OnClickListener() {
         @Override public void onClick(View v) {
             // to reset, copy the master back onto the local
             mSensorListObj_temp = new SensorListObj(mSensorListObj_master);
@@ -157,7 +156,7 @@ public class SensorListFragment extends Fragment {
         }
     };
 
-    View.OnClickListener mApplyListener = new View.OnClickListener() {
+    private View.OnClickListener mOnClickApply = new View.OnClickListener() {
         @Override public void onClick(View v) {
             // to apply the changes, first update the master
             mSensorListObj_master = new SensorListObj(mSensorListObj_temp);
@@ -173,11 +172,11 @@ public class SensorListFragment extends Fragment {
 
 
 
-    public class MyViewHolder extends RecyclerView.ViewHolder
+    protected class MyViewHolder extends RecyclerView.ViewHolder
             implements AdapterView.OnItemSelectedListener {
-        public TextView mTv;
-        public Spinner mSpinner;
-        public int mPosition;
+        protected TextView mTv;
+        protected Spinner mSpinner;
+        protected int mPosition;
 
         public MyViewHolder(View v) {
             // this is basically onCreate
@@ -205,6 +204,7 @@ public class SensorListFragment extends Fragment {
             mPosition = position;
             mTv.setText(mSensorListObj_temp.mNameList[position]);
             mSpinner.setSelection(mSensorListObj_temp.mTypeList[position]);
+            // if the pi is connected, then enable spinners; if disconnected, disable
             mSpinner.setEnabled(mIsConnected);
         }
 
@@ -213,7 +213,7 @@ public class SensorListFragment extends Fragment {
             //Log.d(TAG, "entry " + mPosition + " changed to " + position);
             // if something was selected, then change what's held in mSensorListObj_temp to match
             mSensorListObj_temp.mTypeList[mPosition] = position;
-            // if _temp and _master are the different, then enable both buttons... otherwise, disable both buttons
+            // if _temp and _master are different, then enable both buttons... if same, disable both buttons
             if(mIsConnected && !mSensorListObj_master.equals(mSensorListObj_temp)) {
                 mApply.setEnabled(true); mReset.setEnabled(true);
             } else {
@@ -228,7 +228,7 @@ public class SensorListFragment extends Fragment {
         }
     }
 
-    public class MyAdapter extends RecyclerView.Adapter<MyViewHolder> {
+    protected class MyAdapter extends RecyclerView.Adapter<MyViewHolder> {
         @Override
         public @NonNull MyViewHolder onCreateViewHolder(@NonNull ViewGroup parent, int viewType) {
             LayoutInflater li = LayoutInflater.from(getActivity());
@@ -269,7 +269,7 @@ public class SensorListFragment extends Fragment {
     public void onStart() {
         super.onStart();
         Log.d(TAG, "onStart()");
-        updatePiConnectionState();
+        updatePiConnectionState(((PagerActivity)getActivity()).mPiIsConnected);
     }
     @Override
     public void onStop() {

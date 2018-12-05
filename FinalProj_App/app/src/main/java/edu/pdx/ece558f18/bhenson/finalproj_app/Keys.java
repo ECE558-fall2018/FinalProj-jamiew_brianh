@@ -26,6 +26,7 @@ public class Keys {
     public static final int ID_NOTIFY_ACTIVE = 119;
     public static final int ID_NOTIFY_DISCONNECT = 120;
     public static final int PERM_REQ_WRITE_EXTERNAL = 12345;
+    public static final int COOLDOWN_ARMED_TOGGLE = 700; // 700 ms
 
     // should be used in the notification code, at both ends
     public static final String FCM_ACTIVE_TITLE = "!!! SecApp Alert !!!";

@@ -110,15 +110,15 @@ public class ControlFragment extends Fragment {
 
         // get initial values for armtoggle and timeout from database
         // note: this only needs to get the value for the timeout, the other listener gets the armed status
-        mMyDatabase.addListenerForSingleValueEvent(mInitValuesListener);
+        mMyDatabase.addListenerForSingleValueEvent(mDBListenerTimeout);
 
-        mMyDatabase.child(Keys.DB_ARMED).addValueEventListener(mArmedChangedListener);
+        mMyDatabase.child(Keys.DB_ARMED).addValueEventListener(mDBListenerPiArmed);
 
 
         // attach listeners here
-        mCheckBox.setOnClickListener(checkboxClickListener);
-        mLogout.setOnClickListener(logoutButtonListener);
-        mToggle.setOnClickListener(armedClickListener);
+        mCheckBox.setOnClickListener(mOnClickAutologinCheckbox);
+        mLogout.setOnClickListener(mOnClickLogout);
+        mToggle.setOnClickListener(mOnClickToggleArmed);
         // TODO
         // timout select
 
@@ -126,8 +126,7 @@ public class ControlFragment extends Fragment {
     }
 
     // sets the buttons and whatnot to be enabled/disabled as appropriate
-    public void updatePiConnectionState() {
-        boolean b = ((PagerActivity)getActivity()).mPiIsConnected;
+    public void updatePiConnectionState(boolean b) {
         if(b != mIsConnected) Log.d(TAG, "pi_connected state changed, now " + b);
         if(b) {
             mToggle.setEnabled(true);
@@ -140,7 +139,7 @@ public class ControlFragment extends Fragment {
     }
 
 
-    protected ValueEventListener mArmedChangedListener = new ValueEventListener() {
+    protected ValueEventListener mDBListenerPiArmed = new ValueEventListener() {
         @Override public void onDataChange(@NonNull DataSnapshot ds) {
             Log.d(TAG, "armed value changed");
             try {
@@ -159,7 +158,8 @@ public class ControlFragment extends Fragment {
         }
     };
 
-    private ValueEventListener mInitValuesListener = new ValueEventListener() {
+    // TODO: delete the timeout widget entirely!?
+    protected ValueEventListener mDBListenerTimeout = new ValueEventListener() {
         @Override public void onDataChange(@NonNull DataSnapshot ds) {
             Log.d(TAG, "got the initial values");
             try {
@@ -182,19 +182,20 @@ public class ControlFragment extends Fragment {
         }
     };
 
-    View.OnClickListener armedClickListener = new View.OnClickListener() {
+
+    private View.OnClickListener mOnClickToggleArmed = new View.OnClickListener() {
         @Override public void onClick(View v) {
             // send new value to database
             mMyDatabase.child(Keys.DB_ARMED).setValue( mToggle.isChecked() );
             // disable, but re-enable after 1 second
             mToggle.setEnabled(false);
-            mHandler.postDelayed(reEnableToggle, 1000);
+            mHandler.postDelayed(mReEnableToggle, Keys.COOLDOWN_ARMED_TOGGLE);
         }
     };
 
-    private Runnable reEnableToggle = new Runnable() {@Override public void run() { mToggle.setEnabled(true); }};
+    private Runnable mReEnableToggle = new Runnable() {@Override public void run() { mToggle.setEnabled(true); }};
 
-    View.OnClickListener logoutButtonListener = new View.OnClickListener() {
+    private View.OnClickListener mOnClickLogout = new View.OnClickListener() {
         @Override public void onClick(View v) {
             Log.d(TAG, "logging out");
             // the whole operation executes in the pager activity
@@ -204,7 +205,7 @@ public class ControlFragment extends Fragment {
 
 
 
-    View.OnClickListener checkboxClickListener = new View.OnClickListener() {
+    private View.OnClickListener mOnClickAutologinCheckbox = new View.OnClickListener() {
         @Override public void onClick(View v) {
             Log.d(TAG, "toggling autologin preference");
             // whenever this is toggled, change the sharedpreferences accordingly
@@ -257,7 +258,7 @@ public class ControlFragment extends Fragment {
     public void onStart() {
         super.onStart();
         Log.d(TAG, "onStart()");
-        updatePiConnectionState();
+        updatePiConnectionState(((PagerActivity)getActivity()).mPiIsConnected);
     }
     @Override
     public void onStop() {

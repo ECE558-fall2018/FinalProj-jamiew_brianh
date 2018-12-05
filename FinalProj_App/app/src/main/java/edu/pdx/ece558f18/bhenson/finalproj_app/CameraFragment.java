@@ -46,7 +46,9 @@ import java.util.Locale;
  * create an instance of this fragment.
  */
 public class CameraFragment extends Fragment {
-    public static final String TAG = "SEC_CameraFragment";
+    public static final String TAG = "SEC_CameraFrag";
+    public static final String TAG2 = "_VOIP";
+    public static final String TAG3 = "_PHOTO";
     public static final long TWO_MEGABYTE = 1024 * 1024 * 2;
 
     private CameraFragmentListener mListener;
@@ -74,6 +76,8 @@ public class CameraFragment extends Fragment {
 
     public Handler mHandler = new Handler();
 
+    // TODO: separate into 3 files: one for camera pipeline, one for voip pipeline, and one for the UI
+    // (lowest priority tho, doesn't actually help anything and might just make stuff more confusing)
 
     public CameraFragment() {
         // Required empty public constructor
@@ -146,17 +150,17 @@ public class CameraFragment extends Fragment {
 
         // attach listeners to the buttons
         //mButtSave.setOnClickListener(mSaveClick);
-        mButtManual.setOnClickListener(mManualPhotoRequest);
-        mButtHires.setOnClickListener(mHiresPhotoRequest);
-        mButtVoip.setOnClickListener(mVoipClick);
+        mButtManual.setOnClickListener(mOnClickManual);
+        mButtHires.setOnClickListener(mOnClickHires);
+        mButtVoip.setOnClickListener(mOnClickVoip);
         mButtVoip.setText(R.string.begin_voip_label);
 
 
         // attach the onValueChanged listener
-        mMyDatabase.child(Keys.DB_CAMERA_STATE).addValueEventListener(mOnCameraStateChangeListener);
+        mMyDatabase.child(Keys.DB_CAMERA_STATE).addValueEventListener(mDBListenerCameraState);
 
         // read database to get remote URI
-        mMyDatabase.child(Keys.DB_VOIP_REMOTE_URI).addValueEventListener(mRemoteUriListener);
+        mMyDatabase.child(Keys.DB_VOIP_REMOTE_URI).addValueEventListener(mDBListenerRemoteURI);
 
 
         return v;
@@ -166,8 +170,7 @@ public class CameraFragment extends Fragment {
 
 
     // sets the buttons and whatnot to be enabled/disabled as appropriate
-    public void updatePiConnectionState() {
-        boolean b = ((PagerActivity)getActivity()).mPiIsConnected;
+    protected void updatePiConnectionState(boolean b) {
         if(b != mIsConnected) Log.d(TAG, "pi_connected state changed, now " + b);
         if(b) {
             // the voip button gets turned on only if i already know the destination URI
@@ -193,41 +196,44 @@ public class CameraFragment extends Fragment {
         mIsConnected = b;
     }
 
+    // ===========================================================================================================
+    // voip stuff
 
 
-    View.OnClickListener mVoipClick = new View.OnClickListener() {
+    private View.OnClickListener mOnClickVoip = new View.OnClickListener() {
         @Override public void onClick(View v) {
             // use the same listener but either start/end call depending on state variables
             mButtVoip.setEnabled(false);
             if(!mVoipTalking) {
                 // placing a call:
                 Log.d(TAG, "starting a call");
-                myAttemptToCall();
+                attemptToCall();
             } else {
                 // hanging up:
                 Log.d(TAG, "ending the call");
-                myEndCall();
+                actuallyEndTheCall();
             }
         }
     };
 
-    public void myAttemptToCall() {
+    protected void attemptToCall() {
+        // called by the PagerActivity on permissions return
         // stage 1: check permissions
-        if(myRequestVoipPermissions()) {
+        if(requestPermissionsForVoip()) {
             // stage 2: create a profile
-            myCreateSipProfile();
+            createSipProfile();
             // stage 3: register the profile (the hard part)
-            myRegisterSipProfile();
-            // then goes into listener and the listener asynchronously calls myPlaceCall() if it actually succeeds
+            registerSipProfile();
+            // then goes into listener and the listener asynchronously calls actuallyMakeTheCall() if it actually succeeds
         }
     }
 
-    private boolean myRequestVoipPermissions() {
+    private boolean requestPermissionsForVoip() {
         // return TRUE if it passes, FALSE otherwise
         // this is called by voip button click, and its also called by pageractivity
         // AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA I HATE PERMISSIONS
         if(ContextCompat.checkSelfPermission(getActivity(), Manifest.permission.USE_SIP) != PackageManager.PERMISSION_GRANTED) {
-            Log.d(TAG, "need to request sip permissions");
+            Log.d(TAG + TAG2, "need to request sip permissions");
             ActivityCompat.requestPermissions(getActivity(),
                     new String[]{Manifest.permission.USE_SIP},
                     Keys.PERM_REQ_USE_SIP);
@@ -281,7 +287,7 @@ public class CameraFragment extends Fragment {
     }
 
 
-    private void myCreateSipProfile() {
+    private void createSipProfile() {
         mCallProgress.setVisibility(View.VISIBLE);
         mCallProgress.setProgress(20);
 
@@ -302,7 +308,7 @@ public class CameraFragment extends Fragment {
         Log.d(TAG, "my uri = " + mSipProfile.getUriString());
     }
 
-    private void myRegisterSipProfile() {
+    private void registerSipProfile() {
         // stage 2: register the profile
         // stage 2.5: actually do the thing AFTER the listener is set up
         // stage 3: wait for registration result
@@ -313,12 +319,12 @@ public class CameraFragment extends Fragment {
             mSipManager.open(mSipProfile);
             Log.d(TAG, "am i opened? " + mSipManager.isOpened(mSipProfile.getUriString()));
             if(!mSipManager.isRegistered(mSipProfile.getUriString())) {
-                mSipManager.register(mSipProfile, Keys.SIP_TIMEOUT, myRegistrationListener);
+                mSipManager.register(mSipProfile, Keys.SIP_TIMEOUT, mSipListenerRegistration);
             } else {
                 Log.d(TAG, "already registered??? gonna just go on, see what happens");
-                myPlaceCall();
+                actuallyMakeTheCall();
             }
-            //mSipManager.setRegistrationListener(mSipProfile.getUriString(), myRegistrationListener);
+            //mSipManager.setRegistrationListener(mSipProfile.getUriString(), mSipListenerRegistration);
         } catch (SipException se) {
             Log.d(TAG, "some unknown SIP exception when opening", se);
             mHandler.post(gui2);
@@ -327,7 +333,7 @@ public class CameraFragment extends Fragment {
     }
 
 
-    private SipRegistrationListener myRegistrationListener = new SipRegistrationListener() {
+    private SipRegistrationListener mSipListenerRegistration = new SipRegistrationListener() {
         // NOTE: for some reason i can't put any UI calls in these
         @Override public void onRegistering(String localProfileUri) {
             //updateStatus("Registering with SIP Server...");
@@ -343,23 +349,23 @@ public class CameraFragment extends Fragment {
 
         @Override public void onRegistrationDone(String localProfileUri, long expiryTime) {
             Log.d(TAG, "+++ DONE REGISTERING!");
-            myPlaceCall();
+            actuallyMakeTheCall();
         }
     };
 
 
 
-    private void myPlaceCall() {
+    private void actuallyMakeTheCall() {
         Log.d(TAG, "placing call to base station");
         mCallProgress.setProgress(60);
         try {
-            mCall = mSipManager.makeAudioCall(mSipProfile.getUriString(), mRemoteUri, mAudioCallListener, Keys.SIP_TIMEOUT);
+            mCall = mSipManager.makeAudioCall(mSipProfile.getUriString(), mRemoteUri, mSipListenerAudioCall, Keys.SIP_TIMEOUT);
         } catch (SipException se) {
             Log.d(TAG, "some unknown SIP exception when placing the call", se);
         }
     }
 
-    private SipAudioCall.Listener mAudioCallListener = new SipAudioCall.Listener() {
+    private SipAudioCall.Listener mSipListenerAudioCall = new SipAudioCall.Listener() {
         @Override public void onCalling(SipAudioCall call) {
             super.onCalling(call);
             mHandler.post(gui4);
@@ -391,6 +397,10 @@ public class CameraFragment extends Fragment {
         }
     };
 
+    // NOTE: any calls to the gui either do nothing or actually crash when made inside the SipListeners (apparently thats a separate thread? idk)
+    // however putting those gui updates into simple Runnables that immediately run on the main thread will work
+    // so that's why i have these ugly things
+    // NOTE2: the Database callback functions do support UI calls (usually)
     private Runnable gui1 = new Runnable() {
         @Override public void run() {
             mButtVoip.setEnabled(true);
@@ -400,54 +410,42 @@ public class CameraFragment extends Fragment {
             mCallIndicator.setVisibility(View.VISIBLE);
         }
     };
-    private Runnable gui2 = new Runnable() {
-        @Override public void run() {
-            mButtVoip.setEnabled(mIsConnected && mRemoteUri!=null);
-            mCallProgress.setVisibility(View.INVISIBLE);
-    }};
-    private Runnable gui3 = new Runnable() {
-        @Override public void run() {
-            mCallProgress.setProgress(40);
-    }};
-    private Runnable gui4 = new Runnable() {
-        @Override public void run() {
-            mCallProgress.setProgress(70);
-    }};
+    private Runnable gui2 = new Runnable() {@Override public void run() { mButtVoip.setEnabled(mIsConnected && mRemoteUri!=null); mCallProgress.setVisibility(View.INVISIBLE); }};
+    private Runnable gui3 = new Runnable() {@Override public void run() { mCallProgress.setProgress(40); }};
+    private Runnable gui4 = new Runnable() {@Override public void run() { mCallProgress.setProgress(70); }};
 
-    public void myEndCall() {
-        // note: this is called in onStop and onPageChanged
-        if(mCall != null) {
-            Log.d(TAG, "closing the sip call object");
-            try {
-                mCall.endCall();
-            } catch(SipException se) {
-                Log.d(TAG, "somehow failed to end the call", se);
-            }
-            mCall = null;
-        }
-        Log.d(TAG, "closing the sip profile object");
-        closeLocalProfile();
+    protected void actuallyEndTheCall() {
+        // note: this is called in onStop here and onPageChanged of the PagerActivity
         mVoipTalking = false;
         mHandler.post(gui2);
         mButtVoip.setText(R.string.begin_voip_label);
         // hide the image
         mCallIndicator.setVisibility(View.INVISIBLE);
-    }
 
-    private void closeLocalProfile() {
-        if (mSipManager == null) {
-            return;
-        }
-        try {
-            if (mSipProfile != null) {
-                mSipManager.close(mSipProfile.getUriString());
+        if (mSipManager == null) { return; } // this should never be hit but let's be extra sure
+
+        if (mCall != null) {
+            Log.d(TAG, "closing the sip call object");
+            try {
+                mCall.endCall();
+                mCall = null; // nullify it to be extra sure
+            } catch (SipException se) {
+                Log.d(TAG, "somehow failed to end the call", se);
             }
-        } catch (SipException se) {
-            Log.d(TAG, "Failed to close local profile.", se);
+        }
+        if (mSipProfile != null) {
+            Log.d(TAG, "closing the sip profile object");
+            try {
+                mSipManager.close(mSipProfile.getUriString());
+                mSipProfile = null; // nullify it to be extra sure
+            } catch (SipException se) {
+                Log.d(TAG, "Failed to close local profile.", se);
+            }
         }
     }
 
-    protected ValueEventListener mRemoteUriListener = new ValueEventListener() {
+
+    protected ValueEventListener mDBListenerRemoteURI = new ValueEventListener() {
         @Override public void onDataChange(@NonNull DataSnapshot ds) {
             String s = ds.getValue(String.class);
             if(s == null) {
@@ -629,7 +627,7 @@ public class CameraFragment extends Fragment {
     }
 
 
-    public File getPublicPicturesDir() {
+    private File getPublicPicturesDir() {
         // Get the directory for the user's public pictures directory.
         File file = new File(Environment.getExternalStoragePublicDirectory(Environment.DIRECTORY_PICTURES), Keys.DIR_PUBLIC);
         if (!file.mkdirs()) {
@@ -640,7 +638,7 @@ public class CameraFragment extends Fragment {
 
 
 
-    View.OnClickListener mManualPhotoRequest = new View.OnClickListener() {
+    private View.OnClickListener mOnClickManual = new View.OnClickListener() {
         @Override public void onClick(View v) {
             // to request a photo be taken, simply move to state 1
             mMyDatabase.child(Keys.DB_CAMERA_STATE).setValue(1);
@@ -650,15 +648,16 @@ public class CameraFragment extends Fragment {
         }
     };
 
-    View.OnClickListener mHiresPhotoRequest = new View.OnClickListener() {
+    private View.OnClickListener mOnClickHires = new View.OnClickListener() {
         @Override public void onClick(View v) {
-            myAttemptToDownload();
+            attemptToDownloadHires();
         }
     };
 
-    public void myAttemptToDownload() {
+    protected void attemptToDownloadHires() {
+        // called by PagerActivity in the PermissionsReturn function
         // to request a download of the hires image, simply move to state 4
-        if(myRequestDownloadPermissions()) {
+        if(requestPermissionsForDownload()) {
             // if I do somehow have permission, then do the thing right now
             // set state to 4 to begin the download operation
             mMyDatabase.child(Keys.DB_CAMERA_STATE).setValue(4);
@@ -668,7 +667,7 @@ public class CameraFragment extends Fragment {
         }
     }
 
-    public boolean myRequestDownloadPermissions() {
+    private boolean requestPermissionsForDownload() {
         // to request a download of the hires image, first need to get permissions
         if (ContextCompat.checkSelfPermission(getActivity(), Manifest.permission.WRITE_EXTERNAL_STORAGE) != PackageManager.PERMISSION_GRANTED) {
             Log.d(TAG, "need to request write permissions");
@@ -682,7 +681,7 @@ public class CameraFragment extends Fragment {
         return false;
     }
 
-    protected ValueEventListener mOnCameraStateChangeListener = new ValueEventListener() {
+    protected ValueEventListener mDBListenerCameraState = new ValueEventListener() {
         @Override public void onDataChange(@NonNull DataSnapshot ds) {
             int state;
             try {
@@ -789,17 +788,6 @@ public class CameraFragment extends Fragment {
     };
 
 
-
-
-
-
-
-
-
-
-
-
-
     // ===========================================================================================================
 
     /**
@@ -815,6 +803,7 @@ public class CameraFragment extends Fragment {
     public interface CameraFragmentListener {
         void onRequestPermissionsResult(int requestCode, String permissions[], int[] grantResults);
     }
+
     // ===========================================================================================================
     // override critical lifecycle functions, mostly for logging
 
@@ -839,14 +828,14 @@ public class CameraFragment extends Fragment {
     public void onStart() {
         super.onStart();
         Log.d(TAG, "onStart()");
-        updatePiConnectionState();
+        updatePiConnectionState(((PagerActivity)getActivity()).mPiIsConnected);
     }
     @Override
     public void onStop() {
         super.onStop();
         Log.d(TAG, "onStop()");
         // call this function whenever the app stops (lock screen for example)
-        myEndCall();
+        actuallyEndTheCall();
     }
     @Override
     public void onDestroy() {
