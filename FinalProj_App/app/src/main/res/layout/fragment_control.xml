@@ -18,6 +18,9 @@
                 android:focusable="true"
                 android:focusableInTouchMode="true"
                 android:id="@+id/tv_connection_status"/>
+        <Space
+                android:layout_width="match_parent"
+                android:layout_height="20dp"/>
         <Switch
                 android:layout_width="match_parent"
                 android:layout_height="wrap_content"
@@ -32,6 +35,9 @@
                 tools:checked="false"
                 android:splitTrack="false"
                 android:text="@string/armtoggle_label"/>
+        <Space
+                android:layout_width="match_parent"
+                android:layout_height="20dp"/>
         <CheckBox
                 android:text="@string/autologin_label"
                 android:layout_width="match_parent"
