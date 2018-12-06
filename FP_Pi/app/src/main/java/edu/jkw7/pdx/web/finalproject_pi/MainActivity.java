@@ -1,8 +1,10 @@
-package edu.pdx.ece558f18.bhenson.finalproj_app;
+package edu.jkw7.pdx.web.finalproject_pi;
 
 import android.Manifest;
 import android.app.Activity;
 import android.content.Context;
+import android.media.AudioManager;
+import android.media.MediaPlayer;
 import android.support.v4.content.ContextCompat;
 import android.content.pm.PackageManager;
 import android.content.res.AssetManager;
@@ -15,28 +17,11 @@ import android.support.annotation.NonNull;
 import android.util.Log;
 
 // *****
-import android.Manifest;
-import android.content.Context;
-import android.content.pm.PackageManager;
-import android.graphics.BitmapFactory;
-import android.media.MediaRecorder;
-import android.os.Bundle;
-import android.os.Environment;
-import android.os.Handler;
-import android.support.annotation.NonNull;
-import android.support.v4.app.ActivityCompat;
-import android.support.v4.app.Fragment;
-import android.support.v4.content.ContextCompat;
-import android.util.Log;
-import android.view.LayoutInflater;
-import android.view.View;
-import android.view.ViewGroup;
-import android.widget.Button;
-import android.widget.ImageView;
-import android.widget.ProgressBar;
-import android.widget.Toast;
 import com.google.android.gms.tasks.OnFailureListener;
 import com.google.android.gms.tasks.OnSuccessListener;
+import com.google.android.things.pio.Gpio;
+import com.google.android.things.pio.GpioCallback;
+import com.google.android.things.pio.PeripheralManager;
 import com.google.firebase.auth.FirebaseAuth;
 import com.google.firebase.database.*;
 import com.google.firebase.storage.FirebaseStorage;
@@ -105,29 +90,38 @@ public class MainActivity extends Activity {
     private DatabaseReference piConnectRef;
     private DatabaseReference mMyDatabase = mDatabase.child("users").child(UID);
 
+    public static final int INTERVAL_BETWEEN_CHECK_ARMED = 10000; // 10 seconds
+    public static final String INDICATOR_LED = "BCM8"; // pin connected to the LED indicator
 
-
-    // Variables for handling Pi Camera
-    private DoorbellCamera mCamera;
-    private Handler mCameraHandler;
-    private HandlerThread mCameraThread;
 
     // Variables for handling Firebase Cloud Storage
     private FirebaseStorage mStorage = FirebaseStorage.getInstance();
     private StorageReference mMyStorageBucket = mStorage.getReference().child("users").child(UID);
-    private Handler mCloudHandler;
-    private HandlerThread mCloudThread;
 
-    private boolean haveHiResImage = false;
-    private static final int IMAGE_HEIGHT = 480;
+
+    // Camera junk
+    private DoorbellCamera mCamera;
+    private Handler mCameraHandler;
+    private HandlerThread mCameraThread;
+
+    // Alarm thread
+    private Handler mAlarmHandler;
+    private HandlerThread mAlarmThread;
 
     File mPlayThisFile = null;
     public static final long TWO_MEGABYTE = 1024 * 1024 * 2;
 
+    private boolean isArmed = false;
+
+    MediaPlayer mediaPlayer;
+
+    private Gpio mSensorPin;
+    private boolean firstTrigger = false;
+
     @Override
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
-        setContentView(com.google.firebase.database.R.layout.activity_main);
+        setContentView(R.layout.activity_main);
 
 
         Log.d(TAG, "Made it to main activity");
@@ -136,8 +130,6 @@ public class MainActivity extends Activity {
         try {
             UID = mAuth.getCurrentUser().getUid();
             Log.d(TAG, "Current user is: " + UID);
-            //mDatabase.child(DATA_PI2APP).child(IN_ADC3).setValue(new_adc1);
-
             piConnectRef = mDatabase.child("users").child(UID).child("pi_connected");
             piConnectRef.onDisconnect().setValue(false);
             piConnectRef.setValue(true);
@@ -146,6 +138,8 @@ public class MainActivity extends Activity {
             Log.e(TAG, "Exception when accessing database: ", de);
         }
 
+        mMyDatabase.child("pi_armed").addValueEventListener(mPiArmedStatus);
+
         // Check for camera permissions. If not available, send error log
         if (checkSelfPermission(Manifest.permission.CAMERA)
                 != PackageManager.PERMISSION_GRANTED) {
@@ -153,63 +147,275 @@ public class MainActivity extends Activity {
             Log.e(TAG, "No permission to access camera");
         }
 
-        File file = new File(this.getFilesDir(), "custom_alarm_sound.3gp");
-        if (file.exists()) {
-            // pipe it into the image view
-            mPlayThisFile = file;
-        } else {
-            tryToDownloadSoundFile();
-        }
-
-        Log.d(TAG, "Creating handlers ...");
-        // Creates new handlers and associated threads for camera and Firebase Cloud Storage operations.
+        // Creates new handlers and associated threads for camera and networking operations.
         mCameraThread = new HandlerThread("CameraBackground");
         mCameraThread.start();
         mCameraHandler = new Handler(mCameraThread.getLooper());
 
-        mCloudThread = new HandlerThread("CloudThread");
-        mCloudThread.start();
-        mCloudHandler = new Handler(mCloudThread.getLooper());
-
-        // Initialize camera from open-source class
-        Log.d(TAG, "Initializing camera");
         mCamera = DoorbellCamera.getInstance();
-        mCamera.initializeCamera(this, mCameraHandler, mOnImageAvailableListener, mOnImageAvailableListenerHR);
+        mCamera.initializeCamera(this, mCameraHandler, mOnImageAvailableListener);
 
-        Log.d(TAG, "Taking picture...");
+        mediaPlayer = new MediaPlayer();
+        Log.d(TAG, "Start reading sound data");
+        final File soundfile = new File(this.getFilesDir(), "custom_alarm_sound.3gp");
+        if(soundfile.exists()) {
+            mPlayThisFile = soundfile;
+        } else {
+            tryToDownloadSoundFile();
+        }
+
         mCamera.takePicture();
-        uploadHiResImage();
+        mMyDatabase.child("sound").child("new_sound").addValueEventListener(mDBListenerSoundStatus);
+
+
+
+        // Test Sound Stuff
+        Log.d(TAG, "Running sound test...");
+        //MediaPlayer mediaPlayer = MediaPlayer.create(context, mPlayThisFile);
+        MediaPlayer mediaPlayer = new MediaPlayer();
+        //mediaPlayer.setAudioStreamType(AudioManager.STREAM_MUSIC);
+
+        mAlarmThread = new HandlerThread("AlarmBackground");
+        mAlarmThread.start();
+        mAlarmHandler = new Handler(mAlarmThread.getLooper());
+        mMyDatabase.child("camera/photo_pipeline_state").addValueEventListener(mCameraStateListener);
+
+        try {
+            PeripheralManager manager = PeripheralManager.getInstance();
+            Log.d(TAG, "Available GPIO: " + manager.getGpioList());
+            mSensorPin = manager.openGpio(INDICATOR_LED);
+            mSensorPin.setDirection(Gpio.DIRECTION_IN);
+            mSensorPin.setActiveType(Gpio.ACTIVE_LOW);
+            mSensorPin.setEdgeTriggerType(Gpio.EDGE_BOTH);
+            mSensorPin.registerGpioCallback(mGpioCallback);
+        } catch (IOException io) {
+            Log.e(TAG, "Unable to open pin!!!!!!!");
+        }
+
+
+            try {
+                mSensorPin.registerGpioCallback(mGpioCallback);
+            } catch (IOException ie) {
+                Log.e(TAG, "Unable to open pin!!!!!!!");
+            }
+
+
+
+
+
+        //********************************************************
+        // Start of main logic
+        // Get value of armed , assume false
+        // If armed, check if triggered (on armed write)
+        // If triggered, sound alarm sound and take picture
+
+        //mAlarmHandler.post(mAlarmRunnable);
+
+        // ************************************
+
+
+
+
+        //Log.d(TAG, "End of onCreate ...");
+    } // End of onCreate
+
+    private GpioCallback mGpioCallback = new GpioCallback() {
+        @Override
+        public boolean onGpioEdge(Gpio gpio) {
+            try {
+                if(true) {
+                    // tOdo fill
+                    if (!isArmed) {
+                        Log.d(TAG, "Runnable but not actually armed");
+                        return false;
+                    }
+                    else{
+
+                        // Valid alarm! Execute alarm stuff
+                        mMyDatabase.child("pi_triggered").setValue(true);
+                        Log.d(TAG, "Armed and triggered");
+                        //mMyDatabase.child
+                        mCamera.takePicture();
+                        mplayMediaFile();
+                        return true;
+                    }
+                }
+                else {
+                    //rstTrigger = true;
+                    Log.d(TAG, "Level changed, no trigger");
+                }
+            } catch (Exception ie) {
+                Log.e(TAG, "Could not get gpio value");
+            }
+            return false;
+        }
+    };
+
+
+    private void mplayMediaFile () {
+        if(mPlayThisFile != null) {
+            try {
+                //Log.d(TAG, "Trying to access file at: " + mPlayThisFile.getAbsolutePath().toString());
+                mediaPlayer.setDataSource(mPlayThisFile.getAbsolutePath());
+                mediaPlayer.prepare(); // might take long! (for buffering, etc)
+            } catch (IOException ex) {
+                Log.e(TAG, "Error with whatever - sound shit");
+            }
+            mediaPlayer.start();
+        }
 
     }
 
 
-    protected ValueEventListener mDBListenerSoundStatus = new ValueEventListener() {
-        @Override public void onDataChange(@NonNull DataSnapshot ds) {
-            Log.d(TAG, "sound status changed");
-            boolean b = false;
-            try {
-                b = ds.getValue(Boolean.class);
-            } catch (NullPointerException npe) {
-                Log.d(TAG, "error: bad data when getting initial values", npe);
-                return;
-            } catch(DatabaseException de) {
-                Log.d(TAG, "error: something bad", de);
-                return;
-            }
+/*
 
-            if(b) {
-                tryToDownloadSoundFile();
+    private Runnable mAlarmRunnable = new Runnable() {
+        @Override public void run() {
+            // if the i2c isn't open somehow, then abort
+            if (!isArmed) {
+                Log.d(TAG, "Runnable but not actually armed");
+                mAlarmHandler.postDelayed(mAlarmRunnable, INTERVAL_BETWEEN_CHECK_ARMED); // 10 sec
             } else {
-                // do nothing
+                Log.d(TAG, "Runnable and is armed");
+                // reschedule it to do all this again in 1/4 second
+                //mHandler.postDelayed(mI2cRunnable, INTERVAL_BETWEEN_PIC_READS);
+
+                // Check sensors for if alarm
+                boolean foundAlarm = false;
+
+                if (foundAlarm) {
+                    // Sensor values have been tripped
+                    mMyDatabase.child("pi_triggered").setValue(true);
+
+                    mCamera.takePicture();
+
+                    try {
+                        //Log.d(TAG, "Trying to access file at: " + mPlayThisFile.getAbsolutePath().toString());
+                        mediaPlayer.setDataSource(mPlayThisFile.getAbsolutePath());
+                        mediaPlayer.prepare(); // might take long! (for buffering, etc)
+                    } catch(IOException ex) {
+                        Log.e(TAG, "Error with whatever - sound shit");
+                    }
+                    mediaPlayer.start();
+
+                }
+                mAlarmHandler.postDelayed(mAlarmRunnable, INTERVAL_BETWEEN_CHECK_ARMED); // 10 sec
             }
         }
-        @Override public void onCancelled(@NonNull DatabaseError de) {
-            // Failed to read value, not sure how or what to do about it
-            Log.d(TAG, "firebase error: failed to get snapshot??", de.toException());
+    };
+
+*/
+
+
+    protected ValueEventListener mCameraStateListener = new ValueEventListener() {
+        @Override
+        public void onDataChange(DataSnapshot dataSnapshot) {
+            Log.d(TAG, "Logged a data change");
+            // Get Post object and use the values to update the UI
+            int cameraState = 0;
+            try {
+                cameraState = dataSnapshot.getValue(Integer.class);
+            } catch (NullPointerException npe) {
+                Log.d(TAG, "error: bad data when getting initial values", npe);
+            } catch(DatabaseException de) {
+                Log.d(TAG, "error: something bad", de);
+            }
+            Log.d(TAG, "Camera state is: " + cameraState);
+            switch(cameraState) {
+                case 0:
+                    // do nothing
+                    break;
+                case 1:
+                    // try to take a photo
+                    // once image capture is working, this setValue happens in the onSuccess upload listener
+                    mMyDatabase.child("camera/photo_pipeline_state").setValue(2);
+                    break;
+                case 2:
+                    // do nothing
+                    break;
+                case 3:
+                    // do nothing
+                    break;
+                case 4:
+                    // try to upload the hires photo
+                    // once image capture is working, this setValue happens in the onSuccess upload listener
+                    mMyDatabase.child("camera/photo_pipeline_state").setValue(5);
+                    break;
+                case 5:
+                    // do nothing
+                    break;
+                default:
+                    // log an error
+                    return;
+            }
+        }
+        @Override
+        public void onCancelled(DatabaseError databaseError) {
+            // Getting boolean failed, log a message
+            Log.w(TAG, "boolean read cancelled", databaseError.toException());
+        }
+    };
+
+
+    protected ValueEventListener mDBListenerSoundStatus = new ValueEventListener() {
+            @Override
+            public void onDataChange(DataSnapshot dataSnapshot) {
+                Log.d(TAG, "Logged a data change");
+                // Get Post object and use the values to update the UI
+                boolean isNewFile = false;
+                try {
+                    isNewFile = (Boolean) dataSnapshot.getValue();
+                } catch (NullPointerException npe) {
+                    Log.d(TAG, "error: bad data when getting initial values", npe);
+                } catch(DatabaseException de) {
+                    Log.d(TAG, "error: something bad", de);
+                }
+                if(isNewFile) {
+                    Log.d(TAG, "New sound file found, downloading");
+                    tryToDownloadSoundFile();
+                } else {
+                    Log.d(TAG, "No new sound file found");
+                }
+            }
+            @Override
+            public void onCancelled(DatabaseError databaseError) {
+                // Getting boolean failed, log a message
+                Log.w(TAG, "boolean read cancelled", databaseError.toException());
+            }
+    };
+
+    protected ValueEventListener mPiArmedStatus = new ValueEventListener() {
+        @Override
+        public void onDataChange(DataSnapshot dataSnapshot) {
+            Log.d(TAG, "Logged a data change");
+            // Get Post object and use the values to update the UI
+            boolean isCurrentlyArmed = false;
+            try {
+                isCurrentlyArmed = (Boolean) dataSnapshot.getValue();
+                isArmed = isCurrentlyArmed;
+            } catch (NullPointerException npe) {
+                Log.d(TAG, "error: bad data when getting initial values", npe);
+            } catch(DatabaseException de) {
+                Log.d(TAG, "error: something bad", de);
+            }
+            if(isArmed) {
+                try {
+                    mSensorPin.registerGpioCallback(mGpioCallback);
+                } catch (IOException ie) {
+                    Log.e(TAG, "Unable to open pin!!!!!!!");
+                }
+
+            }
+        }
+        @Override
+        public void onCancelled(DatabaseError databaseError) {
+            // Getting boolean failed, log a message
+            Log.w(TAG, "boolean read cancelled", databaseError.toException());
         }
     };
 
     private void tryToDownloadSoundFile() {
+        Log.d(TAG, "Donwloading sound file");
         mMyStorageBucket.child("custom_alarm_sound.3gp").getBytes(TWO_MEGABYTE).addOnSuccessListener(new OnSuccessListener<byte[]>() {
             @Override
             public void onSuccess(byte[] bytes) {
@@ -252,6 +458,7 @@ public class MainActivity extends Activity {
     private boolean saveImageToLocal(byte[] bytes, String filename) {
         // return false if everything is OK
         // return true if there was some exception
+        Log.d(TAG, "Trying to save to local: " + filename);
         try {
             FileOutputStream outputStream = this.openFileOutput(filename, Context.MODE_PRIVATE);
             outputStream.write(bytes);
@@ -271,83 +478,40 @@ public class MainActivity extends Activity {
     };
 
 
+
+
+
+
     /**
      * Listener for new camera images.
      */
     private ImageReader.OnImageAvailableListener mOnImageAvailableListener =
             new ImageReader.OnImageAvailableListener() {
-        @Override
-        public void onImageAvailable(ImageReader reader) {
-            Log.d(TAG, "Image Reader Listener");
-            Image image = reader.acquireLatestImage();
-            int imgHeight = image.getHeight();
-            // get image bytes
-            ByteBuffer imageBuf = image.getPlanes()[0].getBuffer();
-            final byte[] imageBytes = new byte[imageBuf.remaining()];
-            imageBuf.get(imageBytes);
-            image.close();
-            // Low res version
-            onPictureTaken(imageBytes);
-        }
-
-    };
-
-    private ImageReader.OnImageAvailableListener mOnImageAvailableListenerHR =
-            new ImageReader.OnImageAvailableListener() {
                 @Override
                 public void onImageAvailable(ImageReader reader) {
-                    Log.d(TAG, "Image Reader Listener");
+                    Log.d(TAG, "Listener found available image!!!!!!!!");
                     Image image = reader.acquireLatestImage();
-                    int imgHeight = image.getHeight();
                     // get image bytes
                     ByteBuffer imageBuf = image.getPlanes()[0].getBuffer();
                     final byte[] imageBytes = new byte[imageBuf.remaining()];
                     imageBuf.get(imageBytes);
                     image.close();
 
-                    haveHiResImage = true;
-                    saveImageToLocal(imageBytes, "hiresimage.jpg");
-
+                    onPictureTaken(imageBytes);
                 }
             };
-
-
-    //TODO: what input?
-    private void uploadHiResImage() {
-        // find the existing image file
-        File mfile = new File(this.getFilesDir(), "hiresimage.jpg");
-        Log.d(TAG, "Trying to upload HiResImage");
-        if (mfile.exists()) {
-            Log.d(TAG, "HiResImage exists ...");
-            mStorage.getReference().child("users").child(UID).child("img_3200x2400.jpg").putFile(android.net.Uri.fromFile(mfile)).addOnFailureListener(new OnFailureListener() {
-                @Override public void onFailure(@NonNull Exception e) {
-                    // Handle unsuccessful uploads
-                    Log.e(TAG, "failed to upload", e);
-                }
-            }).addOnSuccessListener(new OnSuccessListener<UploadTask.TaskSnapshot>() {
-                @Override public void onSuccess(UploadTask.TaskSnapshot taskSnapshot) {
-                    // taskSnapshot.getMetadata() contains file metadata such as size, content-type, etc.
-                    Log.d(TAG, "successfully uploaded the file!!! size=" + taskSnapshot.getBytesTransferred());
-                    // when done uploading, then i set the field to TRUE to signal the pi to start downloading
-                    mMyDatabase.child("camera/photo_pipeline_state").setValue(5);
-                }
-            });
-
-        }
-        else {
-            Log.e(TAG, "Failed to upload hi res image");
-        }
-    };
-
 
     /**
      * Upload image data to Firebase as a doorbell event.
      */
-    // TODO: add stuff here, i guess
     private void onPictureTaken(final byte[] imageBytes) {
+        Log.d(TAG, "In onPictureTaken, attemping to do storage write!");
         if (imageBytes != null) {
+            Log.d(TAG, "passed bytes were not null ...");
             //final DatabaseReference log = mDatabase.getReference("logs").push();
-            final StorageReference imageRef = mStorage.getReference().child("users").child(UID).child("img_0640x0480.jpg");
+            final StorageReference imageRef = mMyStorageBucket.child("img_0640x0480.jpg");
+
+            // upload image to storage
             UploadTask task = imageRef.putBytes(imageBytes);
             task.addOnSuccessListener(new OnSuccessListener<UploadTask.TaskSnapshot>() {
                 @Override
@@ -359,36 +523,35 @@ public class MainActivity extends Activity {
                     //log.child("image").setValue(downloadUrl.toString());
                     // process image annotations
                     //annotateImage(log, imageBytes);
-                    mMyDatabase.child("camera/photo_pipeline_state").setValue(5);
                 }
             }).addOnFailureListener(new OnFailureListener() {
                 @Override
                 public void onFailure(@NonNull Exception e) {
                     // clean up this entry
-                    Log.e(TAG, "Unable to upload image to Firebase");
+                    Log.w(TAG, "Unable to upload image to Firebase");
                     //log.removeValue();
                 }
             });
         }
     }
 
-
-    // Override onDestroy to correctly shut down Camera and I/O
-    // TODO: flesh this out with GPIO
     @Override
     protected void onDestroy() {
         super.onDestroy();
         mCamera.shutDown();
 
         mCameraThread.quitSafely();
-        mCloudThread.quitSafely();
-        /*
-        try {
-            mButtonInputDriver.close();
-        } catch (IOException e) {
-            Log.e(TAG, "button driver error", e);
+        mAlarmThread.quitSafely();
+        //mCloudThread.quitSafely();
+
+        if(mSensorPin != null) {
+            try {
+                mSensorPin.close();
+                mSensorPin = null;
+            } catch (IOException e) {
+                Log.e(TAG, "button driver error", e);
+            }
         }
-        */
     }
 
 }
