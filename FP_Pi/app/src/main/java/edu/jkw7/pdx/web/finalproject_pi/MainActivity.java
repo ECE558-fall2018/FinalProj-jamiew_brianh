@@ -3,6 +3,8 @@ package edu.jkw7.pdx.web.finalproject_pi;
 import android.Manifest;
 import android.app.Activity;
 import android.content.Context;
+import android.media.AudioManager;
+import android.media.MediaPlayer;
 import android.support.v4.content.ContextCompat;
 import android.content.pm.PackageManager;
 import android.content.res.AssetManager;
@@ -15,26 +17,6 @@ import android.support.annotation.NonNull;
 import android.util.Log;
 
 // *****
-import android.Manifest;
-import android.content.Context;
-import android.content.pm.PackageManager;
-import android.graphics.BitmapFactory;
-import android.media.MediaRecorder;
-import android.os.Bundle;
-import android.os.Environment;
-import android.os.Handler;
-import android.support.annotation.NonNull;
-import android.support.v4.app.ActivityCompat;
-import android.support.v4.app.Fragment;
-import android.support.v4.content.ContextCompat;
-import android.util.Log;
-import android.view.LayoutInflater;
-import android.view.View;
-import android.view.ViewGroup;
-import android.widget.Button;
-import android.widget.ImageView;
-import android.widget.ProgressBar;
-import android.widget.Toast;
 import com.google.android.gms.tasks.OnFailureListener;
 import com.google.android.gms.tasks.OnSuccessListener;
 import com.google.firebase.auth.FirebaseAuth;
@@ -105,8 +87,6 @@ public class MainActivity extends Activity {
     private DatabaseReference piConnectRef;
     private DatabaseReference mMyDatabase = mDatabase.child("users").child(UID);
 
-
-
     // Variables for handling Pi Camera
     private DoorbellCamera mCamera;
     private Handler mCameraHandler;
@@ -118,11 +98,12 @@ public class MainActivity extends Activity {
     private Handler mCloudHandler;
     private HandlerThread mCloudThread;
 
-    private boolean haveHiResImage = false;
     private static final int IMAGE_HEIGHT = 480;
 
+    //private PlayerAdapter mPlayerAdapter;
     File mPlayThisFile = null;
     public static final long TWO_MEGABYTE = 1024 * 1024 * 2;
+    //public static final int MEDIA_RES_ID = R.raw.jazz_in_paris;
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
@@ -153,13 +134,26 @@ public class MainActivity extends Activity {
             Log.e(TAG, "No permission to access camera");
         }
 
-        File file = new File(this.getFilesDir(), "custom_alarm_sound.3gp");
-        if (file.exists()) {
-            // pipe it into the image view
-            mPlayThisFile = file;
-        } else {
-            tryToDownloadSoundFile();
-        }
+        final File soundfile = new File(this.getFilesDir(), "custom_alarm_sound.3gp");
+        mMyDatabase.child("sound").child("new_sound").addValueEventListener(new ValueEventListener() {
+            @Override
+            public void onDataChange(DataSnapshot dataSnapshot) {
+                // Get Post object and use the values to update the UI
+                boolean isNewFile = (Boolean) dataSnapshot.getValue();
+                if(isNewFile || !soundfile.exists()) {
+                    tryToDownloadSoundFile();
+                } else {
+                    mPlayThisFile = soundfile;
+                }
+            }
+
+            @Override
+            public void onCancelled(DatabaseError databaseError) {
+                // Getting boolean failed, log a message
+                Log.w(TAG, "boolean read cancelled", databaseError.toException());
+                mPlayThisFile = soundfile;
+            }
+        });
 
         Log.d(TAG, "Creating handlers ...");
         // Creates new handlers and associated threads for camera and Firebase Cloud Storage operations.
@@ -180,7 +174,21 @@ public class MainActivity extends Activity {
         mCamera.takePicture();
         uploadHiResImage();
 
-    }
+        // Test Sound Stuff
+        Log.d(TAG, "Running sound test...");
+        //MediaPlayer mediaPlayer = MediaPlayer.create(context, mPlayThisFile);
+        MediaPlayer mediaPlayer = new MediaPlayer();
+        //mediaPlayer.setAudioStreamType(AudioManager.STREAM_MUSIC);
+        try {
+            mediaPlayer.setDataSource( mPlayThisFile.getAbsolutePath());
+            mediaPlayer.prepare(); // might take long! (for buffering, etc)
+        } catch(IOException ex) {
+            Log.e(TAG, "Error with whatever - sound shit");
+        }
+        mediaPlayer.start();
+    } // End of onCreate
+
+
 
 
     protected ValueEventListener mDBListenerSoundStatus = new ValueEventListener() {
@@ -305,7 +313,7 @@ public class MainActivity extends Activity {
                     imageBuf.get(imageBytes);
                     image.close();
 
-                    haveHiResImage = true;
+
                     saveImageToLocal(imageBytes, "hiresimage.jpg");
 
                 }
