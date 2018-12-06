@@ -54,8 +54,8 @@
     <string name="manual_capture_label">Capture &amp; Download Image</string>
     <string name="save_image_label">Save to Local</string>
     <string name="download_hires_label">Download Hires Image</string>
-    <string name="begin_voip_label">Begin VOIP Call</string>
-    <string name="end_voip_label">End Call</string>
+    <string name="begin_record_label">Start Recording</string>
+    <string name="end_record_label">End &amp; Upload</string>
     <string name="new_file_toast">HiRes photo saved to: "%1$s"</string>
     <string name="big_file_fail_toast">Failed%1$i to download HiRes image, retrying&#8230;</string>
     <string name="big_file_giveup_toast">Repeatedly failed to download HiRes image, I give up.</string>

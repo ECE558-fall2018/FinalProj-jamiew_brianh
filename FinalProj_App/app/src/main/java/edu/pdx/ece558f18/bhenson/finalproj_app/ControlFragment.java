@@ -10,7 +10,10 @@ import android.util.Log;
 import android.view.LayoutInflater;
 import android.view.View;
 import android.view.ViewGroup;
-import android.widget.*;
+import android.widget.Button;
+import android.widget.CheckBox;
+import android.widget.Switch;
+import android.widget.TextView;
 import com.google.firebase.auth.FirebaseAuth;
 import com.google.firebase.database.*;
 
@@ -32,7 +35,7 @@ public class ControlFragment extends Fragment {
     private CheckBox mCheckBox;
     private Button mLogout;
     private Switch mToggle;
-    private NumberPicker mNumberPicker;
+//    private NumberPicker mNumberPicker;
     private TextView mStatus;
 
     private boolean mIsConnected;
@@ -84,49 +87,44 @@ public class ControlFragment extends Fragment {
 
         // fill all the UI variables with their objects
         TextView whoami = (TextView) v.findViewById(R.id.tv_whoami);
-        mNumberPicker = (NumberPicker) v.findViewById(R.id.picker_timeout);
+//        mNumberPicker = (NumberPicker) v.findViewById(R.id.picker_timeout);
         mCheckBox = (CheckBox) v.findViewById(R.id.cb_autologin);
         mLogout = (Button) v.findViewById(R.id.butt_logout);
         mToggle = (Switch) v.findViewById(R.id.switch_armtoggle);
         mStatus = (TextView) v.findViewById(R.id.tv_connection_status);
+
+        // TODO: add a toggle swtich to disable the timout feature in the database, for example if I know the system is off
 
         // initialize all UI elements that need it
         // whoami text
         whoami.setText(getString(R.string.whoami_label, Keys.stripEmailSuffix(mAuth.getCurrentUser().getEmail())) );
 
         // numberpicker
-        // TODO: numberpicker is really hard to work with (how do i reverse the order? how do I resize the center bit????) so consider replacing with a spinner or direct input
-        // TODO: specify the values that are displayd (1/2/3/5/10/15/20, perhaps?)
-        mNumberPicker.setMaxValue(100);
-        mNumberPicker.setMinValue(0);
-        mNumberPicker.setWrapSelectorWheel(false);
+//        // TODO: numberpicker is really hard to work with (how do i reverse the order? how do I resize the center bit????) so consider replacing with a spinner or direct input
+//        // TODO: specify the values that are displayd (1/2/3/5/10/15/20, perhaps?)
+//        mNumberPicker.setMaxValue(100);
+//        mNumberPicker.setMinValue(0);
+//        mNumberPicker.setWrapSelectorWheel(false);
 
         // autologin initial value, from sharedprefs
         SharedPreferences prefs = getContext().getSharedPreferences(Keys.FILE_PREFS, Context.MODE_PRIVATE);
         mCheckBox.setChecked(prefs.getBoolean(Keys.KEY_AUTOLOGIN, Keys.DEFAULT_AUTOLOGIN));
 
 
-        // get initial values for armtoggle and timeout from database
-        // note: this only needs to get the value for the timeout, the other listener gets the armed status
-        mMyDatabase.addListenerForSingleValueEvent(mInitValuesListener);
-
-        mMyDatabase.child(Keys.DB_ARMED).addValueEventListener(mArmedChangedListener);
-
 
         // attach listeners here
-        mCheckBox.setOnClickListener(checkboxClickListener);
-        mLogout.setOnClickListener(logoutButtonListener);
-        mToggle.setOnClickListener(armedClickListener);
+        mCheckBox.setOnClickListener(mOnClickAutologinCheckbox);
+        mLogout.setOnClickListener(mOnClickLogout);
+        mToggle.setOnClickListener(mOnClickToggleArmed);
         // TODO
         // timout select
 
-        setPiConnection(mIsConnected);
         return v;
     }
 
     // sets the buttons and whatnot to be enabled/disabled as appropriate
-    public void setPiConnection(boolean b) {
-        Log.d(TAG, "pi_connected state changed, now " + b);
+    public void updatePiConnectionState(boolean b) {
+        if(b != mIsConnected) Log.d(TAG, "pi_connected state changed, now " + b);
         if(b) {
             mToggle.setEnabled(true);
             mStatus.setText(R.string.status_connected);
@@ -138,7 +136,7 @@ public class ControlFragment extends Fragment {
     }
 
 
-    protected ValueEventListener mArmedChangedListener = new ValueEventListener() {
+    protected ValueEventListener mDBListenerPiArmed = new ValueEventListener() {
         @Override public void onDataChange(@NonNull DataSnapshot ds) {
             Log.d(TAG, "armed value changed");
             try {
@@ -146,25 +144,8 @@ public class ControlFragment extends Fragment {
             } catch (NullPointerException npe) {
                 Log.d(TAG, "error: bad data when getting initial values", npe);
                 return;
-            }
-        }
-        @Override public void onCancelled(@NonNull DatabaseError de) {
-            // Failed to read value, not sure how or what to do about it
-            Log.d(TAG, "firebase error: failed to get snapshot??", de.toException());
-        }
-    };
-
-    private ValueEventListener mInitValuesListener = new ValueEventListener() {
-        @Override public void onDataChange(@NonNull DataSnapshot ds) {
-            Log.d(TAG, "got the initial values");
-            try {
-                //mToggle.setChecked(ds.child(Keys.DB_ARMED).getValue(Boolean.class));
-                int fromdb = ds.child(Keys.DB_TIMEOUT).getValue(Integer.class);
-                // TODO: convert # of seconds back into index
-                mNumberPicker.setValue(2);
-
-            } catch (NullPointerException npe) {
-                Log.d(TAG, "error: bad data when getting initial values", npe);
+            } catch(DatabaseException de) {
+                Log.d(TAG, "error: something bad", de);
                 return;
             }
         }
@@ -174,19 +155,43 @@ public class ControlFragment extends Fragment {
         }
     };
 
-    View.OnClickListener armedClickListener = new View.OnClickListener() {
+//    protected ValueEventListener mDBListenerTimeout = new ValueEventListener() {
+//        @Override public void onDataChange(@NonNull DataSnapshot ds) {
+//            Log.d(TAG, "got the initial values");
+//            try {
+//                //mToggle.setChecked(ds.child(Keys.DB_ARMED).getValue(Boolean.class));
+//                int fromdb = ds.child(Keys.DB_TIMEOUT).getValue(Integer.class);
+//                // TODO: convert # of seconds back into index
+//                mNumberPicker.setValue(2);
+//
+//            } catch (NullPointerException npe) {
+//                Log.d(TAG, "error: bad data when getting initial values", npe);
+//                return;
+//            } catch(DatabaseException de) {
+//                Log.d(TAG, "error: something bad", de);
+//                return;
+//            }
+//        }
+//        @Override public void onCancelled(@NonNull DatabaseError de) {
+//            // Failed to read value, not sure how or what to do about it
+//            Log.d(TAG, "firebase error: failed to get snapshot??", de.toException());
+//        }
+//    };
+
+
+    private View.OnClickListener mOnClickToggleArmed = new View.OnClickListener() {
         @Override public void onClick(View v) {
             // send new value to database
             mMyDatabase.child(Keys.DB_ARMED).setValue( mToggle.isChecked() );
             // disable, but re-enable after 1 second
             mToggle.setEnabled(false);
-            mHandler.postDelayed(reEnableToggle, 1000);
+            mHandler.postDelayed(mReEnableToggle, Keys.COOLDOWN_ARMED_TOGGLE);
         }
     };
 
-    private Runnable reEnableToggle = new Runnable() {@Override public void run() { mToggle.setEnabled(true); }};
+    private Runnable mReEnableToggle = new Runnable() {@Override public void run() { mToggle.setEnabled(true); }};
 
-    View.OnClickListener logoutButtonListener = new View.OnClickListener() {
+    private View.OnClickListener mOnClickLogout = new View.OnClickListener() {
         @Override public void onClick(View v) {
             Log.d(TAG, "logging out");
             // the whole operation executes in the pager activity
@@ -196,7 +201,7 @@ public class ControlFragment extends Fragment {
 
 
 
-    View.OnClickListener checkboxClickListener = new View.OnClickListener() {
+    private View.OnClickListener mOnClickAutologinCheckbox = new View.OnClickListener() {
         @Override public void onClick(View v) {
             Log.d(TAG, "toggling autologin preference");
             // whenever this is toggled, change the sharedpreferences accordingly
@@ -244,17 +249,21 @@ public class ControlFragment extends Fragment {
         super.onDetach();
         mListener = null;
         Log.d(TAG, "onDetatch()");
-
     }
     @Override
     public void onStart() {
         super.onStart();
         Log.d(TAG, "onStart()");
+        updatePiConnectionState(((PagerActivity)getActivity()).mPiIsConnected);
+        // get initial values for armtoggle and keep listening afterwards
+        mMyDatabase.child(Keys.DB_ARMED).addValueEventListener(mDBListenerPiArmed);
     }
     @Override
     public void onStop() {
         super.onStop();
         Log.d(TAG, "onStop()");
+        // unregister
+        mMyDatabase.child(Keys.DB_ARMED).removeEventListener(mDBListenerPiArmed);
     }
     @Override
     public void onDestroy() {

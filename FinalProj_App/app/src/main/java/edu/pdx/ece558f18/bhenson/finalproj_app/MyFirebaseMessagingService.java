@@ -46,8 +46,8 @@ public class MyFirebaseMessagingService extends FirebaseMessagingService {
         }
 
         // Check if message contains a notification payload.
-        if (remoteMessage.getNotification() != null) {
-            RemoteMessage.Notification r = remoteMessage.getNotification();
+        RemoteMessage.Notification r = remoteMessage.getNotification();
+        if (r != null) {
             Log.d(TAG, "Message Notification content: " + r.getTitle() + "," + r.getBody() + "," +
                     r.getTag() + "," + r.getIcon() + "," + r.getSound());
         }
@@ -56,7 +56,7 @@ public class MyFirebaseMessagingService extends FirebaseMessagingService {
         // message, here is where that should be initiated. See sendNotification method below.
 
         // generate a toast if the message is received while the app is open
-        sendNotification(z);
+        sendNotification(r.getTitle(), r.getBody(), z);
     }
 
 
@@ -103,22 +103,22 @@ public class MyFirebaseMessagingService extends FirebaseMessagingService {
      * Manually create and show a simple notification containing the received FCM message.
      *
      */
-    private void sendNotification( int whichpage ) {
+    private void sendNotification( String title, String body, int whichpage ) {
 
-        String messageTitle;
-        String messageBody;
+        String messageTitle = title;
+        String messageBody = body;
         int messageID;
         Intent intent = new Intent(this, LoginActivity.class);
         // these flags clear the existing activities and launch a fresh one... still no back stack! pefect!
         intent.setFlags(Intent.FLAG_ACTIVITY_NEW_TASK | Intent.FLAG_ACTIVITY_CLEAR_TASK);
         if(whichpage == 2) {
             intent.putExtra(Keys.KEY_GOTOPAGE, 2);
-            messageTitle = Keys.FCM_ACTIVE_TITLE;
-            messageBody = Keys.FCM_ACTIVE_MESSAGE;
+            //messageTitle = Keys.FCM_ACTIVE_TITLE;
+            //messageBody = Keys.FCM_ACTIVE_MESSAGE;
             messageID = Keys.ID_NOTIFY_ACTIVE;
         } else {
-            messageTitle = Keys.FCM_DISCONNECT_TITLE;
-            messageBody = Keys.FCM_DISCONNECT_MESSAGE;
+            //messageTitle = Keys.FCM_DISCONNECT_TITLE;
+            //messageBody = Keys.FCM_DISCONNECT_MESSAGE;
             messageID = Keys.ID_NOTIFY_DISCONNECT;
         }
         PendingIntent pendingIntent = PendingIntent.getActivity(this, 55 /* Request code, what is this? */, intent, PendingIntent.FLAG_ONE_SHOT);

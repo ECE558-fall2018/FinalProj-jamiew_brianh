@@ -15,17 +15,8 @@ import com.google.firebase.auth.FirebaseAuth;
 import com.google.firebase.database.*;
 
 
-///**
-// * A simple {@link Fragment} subclass.
-// * Activities that contain this fragment must implement the
-// * {@link SensorListFragmentListener} interface
-// * to handle interaction events.
-// * Use the {@link SensorListFragment#newInstance} factory method to
-// * create an instance of this fragment.
-// */
 public class SensorListFragment extends Fragment {
     public static final String TAG = "SEC_SnsrListFragment";
-//    private SensorListFragmentListener mListener;
 
     private boolean mIsConnected;
     private SensorListObj mSensorListObj_master; // holds the obj i got from the database
@@ -90,19 +81,17 @@ public class SensorListFragment extends Fragment {
         mApply = (Button) v.findViewById(R.id.butt_apply);
         mReset = (Button) v.findViewById(R.id.butt_reset);
 
-        mApply.setOnClickListener(mApplyListener);
-        mReset.setOnClickListener(mResetListener);
+        mApply.setOnClickListener(mOnClickApply);
+        mReset.setOnClickListener(mOnClickReset);
 
-        // TODO: get the sensor object from the database, the list is empty until that happens
         mSensorListObj_master = new SensorListObj(0);
         // create the temp as a copy of the master
         mSensorListObj_temp = new SensorListObj(mSensorListObj_master);
+        // get the sensor object from the database, the list is empty until that happens
+        // this can stay up here cuz it only happens once, no need to register/unregister
+        mMyDatabase.child(Keys.DB_SENSOR_CONFIG).addListenerForSingleValueEvent(mDBListenerSensrConfig);
 
-        mMyDatabase.child(Keys.DB_SENSOR_CONFIG).addListenerForSingleValueEvent(mInitSensConfig);
-
-        setPiConnection(mIsConnected);
         return v;
-        // TODO: tear out the interface part, since it's unused?
 
         // TODO: add a "calibrate" button to trigger the range finder setup phase?
     }
@@ -113,25 +102,21 @@ public class SensorListFragment extends Fragment {
 
 
     // sets the buttons and whatnot to be enabled/disabled as appropriate
-    public void setPiConnection(boolean b) {
+    public void updatePiConnectionState(boolean b) {
         // if _temp and _master are the different, then enable both buttons... otherwise, disable both buttons
+        if(b != mIsConnected) Log.d(TAG, "pi_connected state changed, now " + b);
         if(!mSensorListObj_master.equals(mSensorListObj_temp) && b) {
             mApply.setEnabled(true); mReset.setEnabled(true);
         } else {
             mApply.setEnabled(false); mReset.setEnabled(false);
         }
         // is there a simple way to disable all of the elements under/inside a view?
-        if(b) {
-            mRecyclerView.setEnabled(true);
-        } else {
-            mRecyclerView.setEnabled(false);
-        }
-
         mIsConnected = b;
+        mAdapter.notifyDataSetChanged();
     }
 
 
-    protected ValueEventListener mInitSensConfig = new ValueEventListener() {
+    protected ValueEventListener mDBListenerSensrConfig = new ValueEventListener() {
         @Override public void onDataChange(@NonNull DataSnapshot ds) {
             Log.d(TAG, "got the initial values");
             try {
@@ -149,6 +134,9 @@ public class SensorListFragment extends Fragment {
             } catch (NullPointerException npe) {
                 Log.d(TAG, "error: bad data when getting initial values", npe);
                 return;
+            } catch(DatabaseException de) {
+                Log.d(TAG, "error: something bad", de);
+                return;
             }
         }
         @Override public void onCancelled(@NonNull DatabaseError de) {
@@ -158,7 +146,7 @@ public class SensorListFragment extends Fragment {
     };
 
 
-    View.OnClickListener mResetListener = new View.OnClickListener() {
+    private View.OnClickListener mOnClickReset = new View.OnClickListener() {
         @Override public void onClick(View v) {
             // to reset, copy the master back onto the local
             mSensorListObj_temp = new SensorListObj(mSensorListObj_master);
@@ -168,7 +156,7 @@ public class SensorListFragment extends Fragment {
         }
     };
 
-    View.OnClickListener mApplyListener = new View.OnClickListener() {
+    private View.OnClickListener mOnClickApply = new View.OnClickListener() {
         @Override public void onClick(View v) {
             // to apply the changes, first update the master
             mSensorListObj_master = new SensorListObj(mSensorListObj_temp);
@@ -184,11 +172,11 @@ public class SensorListFragment extends Fragment {
 
 
 
-    public class MyViewHolder extends RecyclerView.ViewHolder
+    protected class MyViewHolder extends RecyclerView.ViewHolder
             implements AdapterView.OnItemSelectedListener {
-        public TextView mTv;
-        public Spinner mSpinner;
-        public int mPosition;
+        protected TextView mTv;
+        protected Spinner mSpinner;
+        protected int mPosition;
 
         public MyViewHolder(View v) {
             // this is basically onCreate
@@ -216,6 +204,8 @@ public class SensorListFragment extends Fragment {
             mPosition = position;
             mTv.setText(mSensorListObj_temp.mNameList[position]);
             mSpinner.setSelection(mSensorListObj_temp.mTypeList[position]);
+            // if the pi is connected, then enable spinners; if disconnected, disable
+            mSpinner.setEnabled(mIsConnected);
         }
 
         @Override
@@ -223,7 +213,7 @@ public class SensorListFragment extends Fragment {
             //Log.d(TAG, "entry " + mPosition + " changed to " + position);
             // if something was selected, then change what's held in mSensorListObj_temp to match
             mSensorListObj_temp.mTypeList[mPosition] = position;
-            // if _temp and _master are the different, then enable both buttons... otherwise, disable both buttons
+            // if _temp and _master are different, then enable both buttons... if same, disable both buttons
             if(mIsConnected && !mSensorListObj_master.equals(mSensorListObj_temp)) {
                 mApply.setEnabled(true); mReset.setEnabled(true);
             } else {
@@ -238,7 +228,7 @@ public class SensorListFragment extends Fragment {
         }
     }
 
-    public class MyAdapter extends RecyclerView.Adapter<MyViewHolder> {
+    protected class MyAdapter extends RecyclerView.Adapter<MyViewHolder> {
         @Override
         public @NonNull MyViewHolder onCreateViewHolder(@NonNull ViewGroup parent, int viewType) {
             LayoutInflater li = LayoutInflater.from(getActivity());
@@ -261,22 +251,6 @@ public class SensorListFragment extends Fragment {
 
 
     // ===========================================================================================================
-
-    /**
-     * This interface must be implemented by activities that contain this
-     * fragment to allow an interaction in this fragment to be communicated
-     * to the activity and potentially other fragments contained in that
-     * activity.
-     * <p>
-     * See the Android Training lesson <a href=
-     * "http://developer.android.com/training/basics/fragments/communicating.html"
-     * >Communicating with Other Fragments</a> for more information.
-     */
-//    public interface SensorListFragmentListener {
-//        void onFragmentInteraction(Uri uri);
-//    }
-
-    // ===========================================================================================================
     // override critical lifecycle functions, mostly for logging
 
 
@@ -284,24 +258,18 @@ public class SensorListFragment extends Fragment {
     public void onAttach(Context context) {
         super.onAttach(context);
         Log.d(TAG, "onAttach(context)");
-//        if (context instanceof SensorListFragmentListener) {
-//            mListener = (SensorListFragmentListener) context;
-//        } else {
-//            throw new RuntimeException(context.toString() + " must implement ControlFragmentListener");
-//        }
     }
 
     @Override
     public void onDetach() {
         super.onDetach();
-//        mListener = null;
         Log.d(TAG, "onDetatch()");
-
     }
     @Override
     public void onStart() {
         super.onStart();
         Log.d(TAG, "onStart()");
+        updatePiConnectionState(((PagerActivity)getActivity()).mPiIsConnected);
     }
     @Override
     public void onStop() {

@@ -5,7 +5,6 @@ import android.content.Context;
 import android.content.Intent;
 import android.content.SharedPreferences;
 import android.content.pm.PackageManager;
-import android.net.Uri;
 import android.os.Bundle;
 import android.support.annotation.NonNull;
 import android.support.v4.app.Fragment;
@@ -23,7 +22,6 @@ import com.google.firebase.database.*;
 public class PagerActivity extends AppCompatActivity
         implements  ControlFragment.ControlFragmentListener,
                     CameraFragment.CameraFragmentListener {
-//                    SensorListFragment.SensorListFragmentListener
 
     public static final String TAG = "SEC_Pager";
 
@@ -40,7 +38,7 @@ public class PagerActivity extends AppCompatActivity
     private ViewPager mViewPager;
     private FirebaseAuth mAuth;
     private DatabaseReference mMyDatabase;
-    private boolean mPiIsConnected = false;
+    public boolean mPiIsConnected = false;
 
     @Override
     protected void onCreate(Bundle saved) {
@@ -70,7 +68,6 @@ public class PagerActivity extends AppCompatActivity
 
         // get instance of the database (see proj3 example for more)
         mMyDatabase = FirebaseDatabase.getInstance().getReference().child(Keys.DB_TOPFOLDER).child(mAuth.getCurrentUser().getUid());
-        mMyDatabase.child(Keys.DB_CONNECTED).addValueEventListener(mDisconnectListener);
 
 
 
@@ -95,13 +92,19 @@ public class PagerActivity extends AppCompatActivity
                 Log.d(TAG, "notificaiton manager somehow failed, not sure how", npe);
             }
 
-            // TODO: when moving to control or sensor page, if VOIP is active, hang up
+            // when moving to control or sensor page, if VOIP is active, hang up
+            if(i != 2) {
+                if(mSectionsPagerAdapter.getRegisteredFragment(2) != null) {
+                    CameraFragment f = (CameraFragment) mSectionsPagerAdapter.getRegisteredFragment(2);
+                    f.stopRecording(false);
+                }
+            }
         }
     };
 
     // inital read of database, and also fires each time it changes
     // set the member variable to be used in teh constructor if this fires before the fragments get made
-    private ValueEventListener mDisconnectListener = new ValueEventListener() {
+    private ValueEventListener mDBListenerPiConnected = new ValueEventListener() {
         @Override public void onDataChange(@NonNull DataSnapshot ds) {
             boolean b;
             try {
@@ -109,21 +112,26 @@ public class PagerActivity extends AppCompatActivity
             } catch (NullPointerException npe) {
                 Log.d(TAG, "error: field doesnt exist or has bad data, " + ds.toString(), npe);
                 return;
+            } catch(DatabaseException de) {
+                Log.d(TAG, "error: something bad", de);
+                return;
             }
             Log.d(TAG, "firebase: pi_connected state changed, now " + b);
             mPiIsConnected = b;
             // if the fragments DO exist, then call the functions to enable/disable their buttons
+            // note: if the fragment is STOPPED, these functions don't crash but they do nothing
+            // therefore each fragment also calls these in onStart
             if(mSectionsPagerAdapter.getRegisteredFragment(0) != null) {
                 SensorListFragment f = (SensorListFragment) mSectionsPagerAdapter.getRegisteredFragment(0);
-                f.setPiConnection(b);
+                f.updatePiConnectionState(mPiIsConnected);
             }
             if(mSectionsPagerAdapter.getRegisteredFragment(1) != null) {
                 ControlFragment f = (ControlFragment) mSectionsPagerAdapter.getRegisteredFragment(1);
-                f.setPiConnection(b);
+                f.updatePiConnectionState(mPiIsConnected);
             }
             if(mSectionsPagerAdapter.getRegisteredFragment(2) != null) {
                 CameraFragment f = (CameraFragment) mSectionsPagerAdapter.getRegisteredFragment(2);
-                f.setPiConnection(b);
+                f.updatePiConnectionState(mPiIsConnected);
             }
         }
 
@@ -138,30 +146,114 @@ public class PagerActivity extends AppCompatActivity
     // ===========================================================================================================
     // these callbacks are used by the fragments, these are needed by the interfaces
 
-    @Override
-    public void onFragmentInteraction(Uri uri) {
-        // stub
-    }
-
-    @Override
-    public void onRequestPermissionsResult(int requestCode, @NonNull String permissions[], @NonNull int[] grantResults) {
+    @Override public void onRequestPermissionsResult(int requestCode, @NonNull String permissions[], @NonNull int[] grantResults) {
         switch (requestCode) {
-            case Keys.WRITE_PERMISSIONS_REQ_CODE: {
+            case Keys.PERM_REQ_WRITE_EXTERNAL: {
                 // If request is cancelled, the result arrays are empty.
                 if (grantResults.length > 0 && grantResults[0] == PackageManager.PERMISSION_GRANTED) {
                     // permission was granted, yay! Proceed with the thing
-                    Log.d(TAG, "permission accepted");
+                    Log.d(TAG, "permission accepted for WRITE_EXTRNAL");
                     if(mSectionsPagerAdapter.getRegisteredFragment(2) != null) {
-                        ((CameraFragment) mSectionsPagerAdapter.getRegisteredFragment(2)).triggerDownload();
+                        ((CameraFragment) mSectionsPagerAdapter.getRegisteredFragment(2)).attemptToDownloadHires();
                     }
                 } else {
-                    // permission denied, boo!
-                    // do nothing I suppose
-                    Log.d(TAG, "permission denied");
+                    // permission denied, boo! do nothing I suppose
+                    Log.d(TAG, "permission denied for WRITE_EXTRNAL");
                 }
                 return;
             }
 
+            case Keys.PERM_REQ_RECORD_AUDIO: {
+                // If request is cancelled, the result arrays are empty.
+                if (grantResults.length > 0 && grantResults[0] == PackageManager.PERMISSION_GRANTED) {
+                    // permission was granted, yay!
+                    Log.d(TAG, "permission accepted for RECORD_AUDIO");
+                    if(mSectionsPagerAdapter.getRegisteredFragment(2) != null) {
+                        ((CameraFragment) mSectionsPagerAdapter.getRegisteredFragment(2)).attemptToRecord();
+                    }
+                } else {
+                    // permission denied, boo! do nothing I suppose
+                    Log.d(TAG, "permission denied for RECORD_AUDIO");
+                }
+                return;
+            }
+
+            /*
+            case Keys.PERM_REQ_USE_SIP: {
+                // If request is cancelled, the result arrays are empty.
+                if (grantResults.length > 0 && grantResults[0] == PackageManager.PERMISSION_GRANTED) {
+                    // permission was granted, yay!
+                    Log.d(TAG, "permission accepted for USE_SIP");
+                    if(mSectionsPagerAdapter.getRegisteredFragment(2) != null) {
+                        ((CameraFragment) mSectionsPagerAdapter.getRegisteredFragment(2)).attemptToCall();
+                    }
+                } else {
+                    // permission denied, boo! do nothing I suppose
+                    Log.d(TAG, "permission denied for USE_SIP");
+                }
+                return;
+            }
+
+            case Keys.PERM_REQ_INTERNET: {
+                // If request is cancelled, the result arrays are empty.
+                if (grantResults.length > 0 && grantResults[0] == PackageManager.PERMISSION_GRANTED) {
+                    // permission was granted, yay!
+                    Log.d(TAG, "permission accepted for INTERNET");
+                    if(mSectionsPagerAdapter.getRegisteredFragment(2) != null) {
+                        ((CameraFragment) mSectionsPagerAdapter.getRegisteredFragment(2)).attemptToCall();
+                    }
+                } else {
+                    // permission denied, boo! do nothing I suppose
+                    Log.d(TAG, "permission denied for INTERNET");
+                }
+                return;
+            }
+
+            case Keys.PERM_REQ_ACCESS_WIFI_STATE: {
+                // If request is cancelled, the result arrays are empty.
+                if (grantResults.length > 0 && grantResults[0] == PackageManager.PERMISSION_GRANTED) {
+                    // permission was granted, yay!
+                    Log.d(TAG, "permission accepted for ACCESS_WIFI_STATE");
+                    if(mSectionsPagerAdapter.getRegisteredFragment(2) != null) {
+                        ((CameraFragment) mSectionsPagerAdapter.getRegisteredFragment(2)).attemptToCall();
+                    }
+                } else {
+                    // permission denied, boo! do nothing I suppose
+                    Log.d(TAG, "permission denied for ACCESS_WIFI_STATE");
+                }
+                return;
+            }
+
+            case Keys.PERM_REQ_WAKE_LOCK: {
+                // If request is cancelled, the result arrays are empty.
+                if (grantResults.length > 0 && grantResults[0] == PackageManager.PERMISSION_GRANTED) {
+                    // permission was granted, yay!
+                    Log.d(TAG, "permission accepted for WAKE_LOCK");
+                    if(mSectionsPagerAdapter.getRegisteredFragment(2) != null) {
+                        ((CameraFragment) mSectionsPagerAdapter.getRegisteredFragment(2)).attemptToCall();
+                    }
+                } else {
+                    // permission denied, boo! do nothing I suppose
+                    Log.d(TAG, "permission denied for WAKE_LOCK");
+                }
+                return;
+            }
+
+            case Keys.PERM_REQ_MODIFY_AUDIO_SETTINGS: {
+                // If request is cancelled, the result arrays are empty.
+                if (grantResults.length > 0 && grantResults[0] == PackageManager.PERMISSION_GRANTED) {
+                    // permission was granted, yay!
+                    Log.d(TAG, "permission accepted for MODIFY_AUDIO_SETTINGS");
+                    if(mSectionsPagerAdapter.getRegisteredFragment(2) != null) {
+                        ((CameraFragment) mSectionsPagerAdapter.getRegisteredFragment(2)).attemptToCall();
+                    }
+                } else {
+                    // permission denied, boo! do nothing I suppose
+                    Log.d(TAG, "permission denied for MODIFY_AUDIO_SETTINGS");
+                }
+                return;
+            }
+            */
             // other 'case' lines to check for other
             // permissions this app might request.
         }
@@ -171,11 +263,6 @@ public class PagerActivity extends AppCompatActivity
     @Override
     public void returnToLogin() {
         // this does the whole logout operation
-
-        // first, gotta unregister any listeners i think?????
-        mMyDatabase.child(Keys.DB_CONNECTED).removeEventListener(mDisconnectListener);
-        mMyDatabase.child(Keys.DB_CAMERA_STATE).removeEventListener(((CameraFragment)mSectionsPagerAdapter.getRegisteredFragment(2)).mOnCameraStateChangeListener);
-        mMyDatabase.child(Keys.DB_ARMED).removeEventListener(((ControlFragment)mSectionsPagerAdapter.getRegisteredFragment(1)).mArmedChangedListener);
 
         // TODO: delete apptoken from the Database? otherwise I will continue to receive notifications after I log out
         // even if I sign in as a different user, i will receive notifications for the first user
@@ -199,41 +286,34 @@ public class PagerActivity extends AppCompatActivity
     }
 
 
-//            TextView textView = (TextView) rootView.findViewById(R.id.section_label);
-//            textView.setText(getString(R.string.section_format, getArguments().getInt(ARG_SECTION_NUMBER)));
-
     // ===========================================================================================================
     /**
      * A {@link FragmentPagerAdapter} that returns a fragment corresponding to
      * one of the sections/tabs/pages.
      */
     public class SectionsPagerAdapter extends FragmentPagerAdapter {
-        // 1 if it exists, null if it doesnt
-        SparseArray<Fragment> registeredFragments = new SparseArray<Fragment>();
-        public final String[] page_titles_short;
-
+        // this array holds either 'null' or a reference to the active fragment, super handy!
+        SparseArray<Fragment> mRegisteredFragments = new SparseArray<Fragment>();
+        public final String[] mPageTitles;
 
         public SectionsPagerAdapter(FragmentManager fm, Context c) {
             super(fm);
             // context is used to get resources from the activity, i guess?
-            page_titles_short = c.getResources().getStringArray(R.array.page_title_short);
-
-
-
-            // probably to get more stuff too
+            mPageTitles = c.getResources().getStringArray(R.array.page_title_short);
         }
 
         @Override public @NonNull Object instantiateItem(@NonNull ViewGroup container, int position) {
             Fragment fragment = (Fragment) super.instantiateItem(container, position);
-            registeredFragments.put(position, fragment);
+            mRegisteredFragments.put(position, fragment);
             return fragment;
         }
         @Override public void destroyItem(@NonNull ViewGroup container, int position, @NonNull Object object) {
-            registeredFragments.remove(position);
+            mRegisteredFragments.remove(position);
             super.destroyItem(container, position, object);
         }
+
         // returns null if it is unregistered, nonnull if it exists
-        public Fragment getRegisteredFragment(int position) { return registeredFragments.get(position); }
+        public Fragment getRegisteredFragment(int position) { return mRegisteredFragments.get(position); }
 
         @Override public Fragment getItem(int position) {
             // getItem is called to instantiate the fragment for the given page.
@@ -258,7 +338,7 @@ public class PagerActivity extends AppCompatActivity
             return f;
         }
 
-        @Override public CharSequence getPageTitle(int position) { return page_titles_short[position]; }
+        @Override public CharSequence getPageTitle(int position) { return mPageTitles[position]; }
 
         @Override public int getCount() { return 3; }
     }
@@ -303,6 +383,7 @@ public class PagerActivity extends AppCompatActivity
         } catch (NullPointerException npe) {
             Log.d(TAG, "notificaiton manager somehow failed, not sure how", npe);
         }
+        mMyDatabase.child(Keys.DB_CONNECTED).addValueEventListener(mDBListenerPiConnected);
 
     }
     @Override
@@ -314,6 +395,7 @@ public class PagerActivity extends AppCompatActivity
     protected void onStop() {
         super.onStop();
         Log.d(TAG, "onStop()");
+        mMyDatabase.child(Keys.DB_CONNECTED).removeEventListener(mDBListenerPiConnected);
     }
     @Override
     protected void onDestroy() {
