@@ -1,24 +1,4 @@
-/*
- * Copyright 2016, The Android Open Source Project
- *
- * Licensed under the Apache License, Version 2.0 (the "License");
- * you may not use this file except in compliance with the License.
- * You may obtain a copy of the License at
- *
- *      http://www.apache.org/licenses/LICENSE-2.0
- *
- * Unless required by applicable law or agreed to in writing, software
- * distributed under the License is distributed on an "AS IS" BASIS,
- * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
- * See the License for the specific language governing permissions and
- * limitations under the License.
- */
-
-package edu.pdx.ece558f18.bhenson.finalproj_app;
-/*
- * This class was taken from the following website on 12/5/2018
- * https://github.com/androidthings/doorbell/blob/master/app/src/main/java/com/example/androidthings/doorbell/DoorbellCamera.java
- */
+package edu.jkw7.pdx.web.finalproject_pi;
 
 import android.content.Context;
 import android.graphics.ImageFormat;
@@ -46,24 +26,18 @@ import static android.content.Context.CAMERA_SERVICE;
 public class DoorbellCamera {
     private static final String TAG = DoorbellCamera.class.getSimpleName();
 
-    //private static final int IMAGE_WIDTH = 320;
-    //private static final int IMAGE_HEIGHT = 240;
     private static final int IMAGE_WIDTH = 640;
     private static final int IMAGE_HEIGHT = 480;
-    private static final int IMAGE_WIDTH_HR = 3200;
-    private static final int IMAGE_HEIGHT_HR = 2400;
     private static final int MAX_IMAGES = 1;
 
     private CameraDevice mCameraDevice;
 
     private CameraCaptureSession mCaptureSession;
-    private CameraCaptureSession mCaptureSessionHR;
 
     /**
      * An {@link ImageReader} that handles still image capture.
      */
     private ImageReader mImageReader;
-    private ImageReader mImageReaderHR;
 
     // Lazy-loaded singleton, so only one instance of the camera is created.
     private DoorbellCamera() {
@@ -82,17 +56,12 @@ public class DoorbellCamera {
      */
     public void initializeCamera(Context context,
                                  Handler backgroundHandler,
-                                 ImageReader.OnImageAvailableListener imageAvailableListener,
-                                 ImageReader.OnImageAvailableListener imageAvailableListenerHR) {
+                                 ImageReader.OnImageAvailableListener imageAvailableListener) {
         // Discover the camera instance
-        Log.d(TAG, "In function initializeCamera ");
-        Log.d(TAG, "Context is: " + context.toString());
         CameraManager manager = (CameraManager) context.getSystemService(CAMERA_SERVICE);
-        Log.d(TAG, "Tried to set up camera manager ... ");
         String[] camIds = {};
         try {
             camIds = manager.getCameraIdList();
-            Log.d(TAG, "Here is the camera ID list: " + camIds[0].toString() +".");
         } catch (CameraAccessException e) {
             Log.e(TAG, "Cam access exception getting IDs", e);
         }
@@ -109,20 +78,12 @@ public class DoorbellCamera {
         mImageReader.setOnImageAvailableListener(
                 imageAvailableListener, backgroundHandler);
 
-        // Create HiRes image processor
-
-        mImageReaderHR = ImageReader.newInstance(IMAGE_WIDTH_HR, IMAGE_HEIGHT_HR,
-                ImageFormat.JPEG, MAX_IMAGES);
-        mImageReaderHR.setOnImageAvailableListener(
-                imageAvailableListenerHR, backgroundHandler);
-
         // Open the camera resource
         try {
             manager.openCamera(id, mStateCallback, backgroundHandler);
         } catch (CameraAccessException cae) {
             Log.d(TAG, "Camera access exception", cae);
         }
-        Log.d(TAG, "End of initialize Camera method");
     }
 
     /**
@@ -132,9 +93,6 @@ public class DoorbellCamera {
         @Override
         public void onOpened(CameraDevice cameraDevice) {
             Log.d(TAG, "Opened camera.");
-            if(cameraDevice == null) {
-                Log.e(TAG, "Camera device is being set to null!");
-            }
             mCameraDevice = cameraDevice;
         }
 
@@ -161,7 +119,7 @@ public class DoorbellCamera {
      * Begin a still image capture
      */
     public void takePicture() {
-        Log.d(TAG, "Taking a picture ...");
+        Log.d(TAG, "Inside take picture func");
         if (mCameraDevice == null) {
             Log.e(TAG, "Cannot capture image. Camera not initialized.");
             return;
@@ -173,10 +131,6 @@ public class DoorbellCamera {
                     Collections.singletonList(mImageReader.getSurface()),
                     mSessionCallback,
                     null);
-            mCameraDevice.createCaptureSession(
-                    Collections.singletonList(mImageReaderHR.getSurface()),
-                    mSessionCallbackHR,
-                    null);
         } catch (CameraAccessException cae) {
             Log.e(TAG, "access exception while preparing pic", cae);
         }
@@ -185,49 +139,38 @@ public class DoorbellCamera {
     /**
      * Callback handling session state changes
      */
-    private CameraCaptureSession.StateCallback mSessionCallback = new CameraCaptureSession.StateCallback() {
-        @Override public void onConfigured(CameraCaptureSession cameraCaptureSession) {
-            // The camera is already closed
-            if (mCameraDevice == null) { return; }
+    private CameraCaptureSession.StateCallback mSessionCallback =
+            new CameraCaptureSession.StateCallback() {
+                @Override
+                public void onConfigured(CameraCaptureSession cameraCaptureSession) {
+                    // The camera is already closed
+                    if (mCameraDevice == null) {
+                        return;
+                    }
 
-            // When the session is ready, we start capture.
-            mCaptureSession = cameraCaptureSession;
-            triggerImageCapture(false);
-        }
+                    // When the session is ready, we start capture.
+                    mCaptureSession = cameraCaptureSession;
+                    triggerImageCapture();
+                }
 
-        @Override public void onConfigureFailed(CameraCaptureSession cameraCaptureSession) { Log.e(TAG, "Failed to configure camera"); }
-    };
-
-    private CameraCaptureSession.StateCallback mSessionCallbackHR = new CameraCaptureSession.StateCallback() {
-        @Override public void onConfigured(CameraCaptureSession cameraCaptureSession) {
-            // The camera is already closed
-            if (mCameraDevice == null) { return; }
-
-            // When the session is ready, we start capture.
-            mCaptureSessionHR = cameraCaptureSession;
-            triggerImageCapture(true);
-        }
-
-        @Override public void onConfigureFailed(CameraCaptureSession cameraCaptureSession) { Log.e(TAG, "Failed to configure camera"); }
-    };
+                @Override
+                public void onConfigureFailed(CameraCaptureSession cameraCaptureSession) {
+                    Log.e(TAG, "Failed to configure camera");
+                }
+            };
 
     /**
      * Execute a new capture request within the active session
      */
-    private void triggerImageCapture(boolean is_hires) {
+    private void triggerImageCapture() {
+        Log.d(TAG, "Inside trigger image capture");
         try {
             final CaptureRequest.Builder captureBuilder =
                     mCameraDevice.createCaptureRequest(CameraDevice.TEMPLATE_STILL_CAPTURE);
-            if(is_hires)
-                captureBuilder.addTarget(mImageReader.getSurface());
-            else
-                captureBuilder.addTarget(mImageReaderHR.getSurface());
+            captureBuilder.addTarget(mImageReader.getSurface());
             captureBuilder.set(CaptureRequest.CONTROL_AE_MODE, CaptureRequest.CONTROL_AE_MODE_ON);
             Log.d(TAG, "Session initialized.");
-            if(is_hires)
-                mCaptureSession.capture(captureBuilder.build(), mCaptureCallback, null);
-            else
-                mCaptureSessionHR.capture(captureBuilder.build(), mCaptureCallback, null);
+            mCaptureSession.capture(captureBuilder.build(), mCaptureCallback, null);
         } catch (CameraAccessException cae) {
             Log.e(TAG, "camera capture exception", cae);
         }
@@ -252,7 +195,7 @@ public class DoorbellCamera {
                                                TotalCaptureResult result) {
                     if (session != null) {
                         session.close();
-                        //mCaptureSession = null;
+                        mCaptureSession = null;
                         Log.d(TAG, "CaptureSession closed");
                     }
                 }
