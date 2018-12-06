@@ -41,9 +41,14 @@ exports.checkBaseStationConnected = functions.database.ref('users/{userUid}/pi_c
 		// Build Notification to send to phone app
 		// Notification details.
 		const payload = {
+			//priority: 'high',
 			notification: {
 				title: 'Security Base Station has lost connection!',
 				body: `Security Base Station has disconnected from the server`,
+				sound: 'default'
+			},
+			data:{
+				"goto_page": "1"
 			}
 		};
 
@@ -55,7 +60,7 @@ exports.checkBaseStationConnected = functions.database.ref('users/{userUid}/pi_c
 				if (error) {
 					console.error('Could not send notification to ', userUid, '. With error: ', error);
 				} else {
-					console.log('Sucessfully sent message to ', userUid, '. Response of: ', response);
+					console.log('Sucessfully sent message to ', userUid, 'about disconnect. Response of: ', response);
 				}
 				return response;
 			})
@@ -120,9 +125,14 @@ exports.checkStationAlarm = functions.database.ref('/users/{userUid}/pi_triggere
 	// Build Notification to send to phone app
 	// Notification details.
 	const payload = {
+		//priority: 'high',
 		notification: {
 			title: 'Alarm recieved from Security Base Station!',
 			body: `Security Base Station sent an alarm - Uknown reason`,
+			sound: 'default'
+		},
+		data:{
+			"goto_page": "2"
 		}
 	};
 
@@ -134,7 +144,7 @@ exports.checkStationAlarm = functions.database.ref('/users/{userUid}/pi_triggere
 			if (error) {
 				console.error('Could not send notification to ', userUid, '. With error: ', error);
 			} else {
-				console.log('Sucessfully sent message to ', userUid, '. Response of: ', response);
+				console.log('Sucessfully sent message to ', userUid, 'about alarm. Response of: ', response);
 			}
 			return response;
 		})
