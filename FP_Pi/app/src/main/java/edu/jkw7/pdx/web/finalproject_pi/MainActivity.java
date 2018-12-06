@@ -19,6 +19,8 @@ import android.util.Log;
 // *****
 import com.google.android.gms.tasks.OnFailureListener;
 import com.google.android.gms.tasks.OnSuccessListener;
+import com.google.android.things.pio.Gpio;
+import com.google.android.things.pio.GpioCallback;
 import com.google.android.things.pio.PeripheralManager;
 import com.google.firebase.auth.FirebaseAuth;
 import com.google.firebase.database.*;
@@ -113,6 +115,9 @@ public class MainActivity extends Activity {
 
     MediaPlayer mediaPlayer;
 
+    private Gpio mSensorPin;
+    private boolean firstTrigger = false;
+
     @Override
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
@@ -170,8 +175,32 @@ public class MainActivity extends Activity {
         MediaPlayer mediaPlayer = new MediaPlayer();
         //mediaPlayer.setAudioStreamType(AudioManager.STREAM_MUSIC);
 
-        PeripheralManager manager = PeripheralManager.getInstance();
-        Log.d(TAG, "Available GPIO: " + manager.getGpioList());
+        mAlarmThread = new HandlerThread("AlarmBackground");
+        mAlarmThread.start();
+        mAlarmHandler = new Handler(mAlarmThread.getLooper());
+        mMyDatabase.child("camera/photo_pipeline_state").addValueEventListener(mCameraStateListener);
+
+        try {
+            PeripheralManager manager = PeripheralManager.getInstance();
+            Log.d(TAG, "Available GPIO: " + manager.getGpioList());
+            mSensorPin = manager.openGpio(INDICATOR_LED);
+            mSensorPin.setDirection(Gpio.DIRECTION_IN);
+            mSensorPin.setActiveType(Gpio.ACTIVE_LOW);
+            mSensorPin.setEdgeTriggerType(Gpio.EDGE_BOTH);
+            mSensorPin.registerGpioCallback(mGpioCallback);
+        } catch (IOException io) {
+            Log.e(TAG, "Unable to open pin!!!!!!!");
+        }
+
+
+            try {
+                mSensorPin.registerGpioCallback(mGpioCallback);
+            } catch (IOException ie) {
+                Log.e(TAG, "Unable to open pin!!!!!!!");
+            }
+
+
+
 
 
         //********************************************************
@@ -179,18 +208,66 @@ public class MainActivity extends Activity {
         // Get value of armed , assume false
         // If armed, check if triggered (on armed write)
         // If triggered, sound alarm sound and take picture
-        mAlarmThread = new HandlerThread("AlarmBackground");
-        mAlarmThread.start();
-        mAlarmHandler = new Handler(mAlarmThread.getLooper());
-        mAlarmHandler.post(mAlarmRunnable);
+
+        //mAlarmHandler.post(mAlarmRunnable);
 
         // ************************************
 
 
 
 
-        Log.d(TAG, "End of onCreate ...");
+        //Log.d(TAG, "End of onCreate ...");
     } // End of onCreate
+
+    private GpioCallback mGpioCallback = new GpioCallback() {
+        @Override
+        public boolean onGpioEdge(Gpio gpio) {
+            try {
+                if(true) {
+                    // tOdo fill
+                    if (!isArmed) {
+                        Log.d(TAG, "Runnable but not actually armed");
+                        return false;
+                    }
+                    else{
+
+                        // Valid alarm! Execute alarm stuff
+                        mMyDatabase.child("pi_triggered").setValue(true);
+                        Log.d(TAG, "Armed and triggered");
+                        //mMyDatabase.child
+                        mCamera.takePicture();
+                        mplayMediaFile();
+                        return true;
+                    }
+                }
+                else {
+                    //rstTrigger = true;
+                    Log.d(TAG, "Level changed, no trigger");
+                }
+            } catch (Exception ie) {
+                Log.e(TAG, "Could not get gpio value");
+            }
+            return false;
+        }
+    };
+
+
+    private void mplayMediaFile () {
+        if(mPlayThisFile != null) {
+            try {
+                //Log.d(TAG, "Trying to access file at: " + mPlayThisFile.getAbsolutePath().toString());
+                mediaPlayer.setDataSource(mPlayThisFile.getAbsolutePath());
+                mediaPlayer.prepare(); // might take long! (for buffering, etc)
+            } catch (IOException ex) {
+                Log.e(TAG, "Error with whatever - sound shit");
+            }
+            mediaPlayer.start();
+        }
+
+    }
+
+
+/*
 
     private Runnable mAlarmRunnable = new Runnable() {
         @Override public void run() {
@@ -227,10 +304,57 @@ public class MainActivity extends Activity {
         }
     };
 
+*/
 
 
-
-
+    protected ValueEventListener mCameraStateListener = new ValueEventListener() {
+        @Override
+        public void onDataChange(DataSnapshot dataSnapshot) {
+            Log.d(TAG, "Logged a data change");
+            // Get Post object and use the values to update the UI
+            int cameraState = 0;
+            try {
+                cameraState = dataSnapshot.getValue(Integer.class);
+            } catch (NullPointerException npe) {
+                Log.d(TAG, "error: bad data when getting initial values", npe);
+            } catch(DatabaseException de) {
+                Log.d(TAG, "error: something bad", de);
+            }
+            Log.d(TAG, "Camera state is: " + cameraState);
+            switch(cameraState) {
+                case 0:
+                    // do nothing
+                    break;
+                case 1:
+                    // try to take a photo
+                    // once image capture is working, this setValue happens in the onSuccess upload listener
+                    mMyDatabase.child("camera/photo_pipeline_state").setValue(2);
+                    break;
+                case 2:
+                    // do nothing
+                    break;
+                case 3:
+                    // do nothing
+                    break;
+                case 4:
+                    // try to upload the hires photo
+                    // once image capture is working, this setValue happens in the onSuccess upload listener
+                    mMyDatabase.child("camera/photo_pipeline_state").setValue(5);
+                    break;
+                case 5:
+                    // do nothing
+                    break;
+                default:
+                    // log an error
+                    return;
+            }
+        }
+        @Override
+        public void onCancelled(DatabaseError databaseError) {
+            // Getting boolean failed, log a message
+            Log.w(TAG, "boolean read cancelled", databaseError.toException());
+        }
+    };
 
 
     protected ValueEventListener mDBListenerSoundStatus = new ValueEventListener() {
@@ -273,6 +397,14 @@ public class MainActivity extends Activity {
                 Log.d(TAG, "error: bad data when getting initial values", npe);
             } catch(DatabaseException de) {
                 Log.d(TAG, "error: something bad", de);
+            }
+            if(isArmed) {
+                try {
+                    mSensorPin.registerGpioCallback(mGpioCallback);
+                } catch (IOException ie) {
+                    Log.e(TAG, "Unable to open pin!!!!!!!");
+                }
+
             }
         }
         @Override
@@ -377,7 +509,7 @@ public class MainActivity extends Activity {
         if (imageBytes != null) {
             Log.d(TAG, "passed bytes were not null ...");
             //final DatabaseReference log = mDatabase.getReference("logs").push();
-            final StorageReference imageRef = mMyStorageBucket.child("new_test_image.jpg");
+            final StorageReference imageRef = mMyStorageBucket.child("img_0640x0480.jpg");
 
             // upload image to storage
             UploadTask task = imageRef.putBytes(imageBytes);
@@ -409,14 +541,17 @@ public class MainActivity extends Activity {
         mCamera.shutDown();
 
         mCameraThread.quitSafely();
+        mAlarmThread.quitSafely();
         //mCloudThread.quitSafely();
-        /*
-        try {
-            mButtonInputDriver.close();
-        } catch (IOException e) {
-            Log.e(TAG, "button driver error", e);
+
+        if(mSensorPin != null) {
+            try {
+                mSensorPin.close();
+                mSensorPin = null;
+            } catch (IOException e) {
+                Log.e(TAG, "button driver error", e);
+            }
         }
-        */
     }
 
 }
