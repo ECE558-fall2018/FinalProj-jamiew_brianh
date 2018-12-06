@@ -1,0 +1,62 @@
+<?xml version="1.0" encoding="utf-8"?>
+<FrameLayout xmlns:android="http://schemas.android.com/apk/res/android"
+             xmlns:tools="http://schemas.android.com/tools"
+             android:layout_width="match_parent"
+             android:layout_height="match_parent"
+             tools:context=".CameraFragment">
+
+    <LinearLayout
+            android:orientation="vertical"
+            android:layout_width="match_parent"
+            android:layout_height="match_parent"
+            android:layout_margin="15dp"
+            android:gravity="center_horizontal">
+        <!-- The image should always have 640::480 aspect ratio, whatever its actual resolution is -->
+        <ImageView
+                android:src="@drawable/no_image_640x480"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:scaleType="fitXY"
+                android:adjustViewBounds="true"
+                android:id="@+id/imageView"
+                android:contentDescription="@string/blind_people_text"/>
+        <ProgressBar
+                android:id="@+id/camera_progress"
+                style="?android:attr/progressBarStyleHorizontal"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:layout_marginBottom="8dp"
+                android:visibility="invisible"/>
+        <Button
+                android:text="@string/manual_capture_label"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:id="@+id/butt_manual_capture"/>
+        <Button
+                android:text="@string/download_hires_label"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:id="@+id/butt_hires"/>
+        <ProgressBar
+                style="?android:attr/progressBarStyleHorizontal"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:id="@+id/call_progress"
+                android:visibility="invisible"/>
+        <Button
+                android:text="@string/error"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:id="@+id/butt_record"
+        />
+        <ImageView
+                android:src="@drawable/speaker_v2"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:scaleType="fitXY"
+                android:adjustViewBounds="true"
+                android:id="@+id/imageView_speaker"
+                android:visibility="invisible"/>
+    </LinearLayout>
+
+</FrameLayout>
