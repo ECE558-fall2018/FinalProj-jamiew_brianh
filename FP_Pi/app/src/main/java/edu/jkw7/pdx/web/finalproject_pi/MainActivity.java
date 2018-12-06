@@ -1,4 +1,4 @@
-package edu.jkw7.pdx.web.finalproject_pi;
+package edu.pdx.ece558f18.bhenson.finalproj_app;
 
 import android.Manifest;
 import android.app.Activity;
@@ -127,7 +127,7 @@ public class MainActivity extends Activity {
     @Override
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
-        setContentView(R.layout.activity_main);
+        setContentView(com.google.firebase.database.R.layout.activity_main);
 
 
         Log.d(TAG, "Made it to main activity");
@@ -329,7 +329,7 @@ public class MainActivity extends Activity {
                     // taskSnapshot.getMetadata() contains file metadata such as size, content-type, etc.
                     Log.d(TAG, "successfully uploaded the file!!! size=" + taskSnapshot.getBytesTransferred());
                     // when done uploading, then i set the field to TRUE to signal the pi to start downloading
-                    mDatabase.child(UID).child(UID).child("camera/photo_pipeline_state").setValue(5);
+                    mMyDatabase.child("camera/photo_pipeline_state").setValue(5);
                 }
             });
 
@@ -359,6 +359,7 @@ public class MainActivity extends Activity {
                     //log.child("image").setValue(downloadUrl.toString());
                     // process image annotations
                     //annotateImage(log, imageBytes);
+                    mMyDatabase.child("camera/photo_pipeline_state").setValue(5);
                 }
             }).addOnFailureListener(new OnFailureListener() {
                 @Override

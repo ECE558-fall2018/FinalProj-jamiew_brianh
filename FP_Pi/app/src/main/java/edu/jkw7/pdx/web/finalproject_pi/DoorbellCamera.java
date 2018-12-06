@@ -14,7 +14,7 @@
  * limitations under the License.
  */
 
-package edu.jkw7.pdx.web.finalproject_pi;
+package edu.pdx.ece558f18.bhenson.finalproj_app;
 /*
  * This class was taken from the following website on 12/5/2018
  * https://github.com/androidthings/doorbell/blob/master/app/src/main/java/com/example/androidthings/doorbell/DoorbellCamera.java
@@ -57,6 +57,7 @@ public class DoorbellCamera {
     private CameraDevice mCameraDevice;
 
     private CameraCaptureSession mCaptureSession;
+    private CameraCaptureSession mCaptureSessionHR;
 
     /**
      * An {@link ImageReader} that handles still image capture.
@@ -81,7 +82,8 @@ public class DoorbellCamera {
      */
     public void initializeCamera(Context context,
                                  Handler backgroundHandler,
-                                 ImageReader.OnImageAvailableListener imageAvailableListener, ImageReader.OnImageAvailableListener imageAvailableListenerHR) {
+                                 ImageReader.OnImageAvailableListener imageAvailableListener,
+                                 ImageReader.OnImageAvailableListener imageAvailableListenerHR) {
         // Discover the camera instance
         Log.d(TAG, "In function initializeCamera ");
         Log.d(TAG, "Context is: " + context.toString());
@@ -108,12 +110,12 @@ public class DoorbellCamera {
                 imageAvailableListener, backgroundHandler);
 
         // Create HiRes image processor
-        /*
+
         mImageReaderHR = ImageReader.newInstance(IMAGE_WIDTH_HR, IMAGE_HEIGHT_HR,
                 ImageFormat.JPEG, MAX_IMAGES);
-        mImageReader.setOnImageAvailableListener(
+        mImageReaderHR.setOnImageAvailableListener(
                 imageAvailableListenerHR, backgroundHandler);
-        */
+
         // Open the camera resource
         try {
             manager.openCamera(id, mStateCallback, backgroundHandler);
@@ -171,6 +173,10 @@ public class DoorbellCamera {
                     Collections.singletonList(mImageReader.getSurface()),
                     mSessionCallback,
                     null);
+            mCameraDevice.createCaptureSession(
+                    Collections.singletonList(mImageReaderHR.getSurface()),
+                    mSessionCallbackHR,
+                    null);
         } catch (CameraAccessException cae) {
             Log.e(TAG, "access exception while preparing pic", cae);
         }
@@ -179,37 +185,49 @@ public class DoorbellCamera {
     /**
      * Callback handling session state changes
      */
-    private CameraCaptureSession.StateCallback mSessionCallback =
-            new CameraCaptureSession.StateCallback() {
-                @Override
-                public void onConfigured(CameraCaptureSession cameraCaptureSession) {
-                    // The camera is already closed
-                    if (mCameraDevice == null) {
-                        return;
-                    }
+    private CameraCaptureSession.StateCallback mSessionCallback = new CameraCaptureSession.StateCallback() {
+        @Override public void onConfigured(CameraCaptureSession cameraCaptureSession) {
+            // The camera is already closed
+            if (mCameraDevice == null) { return; }
 
-                    // When the session is ready, we start capture.
-                    mCaptureSession = cameraCaptureSession;
-                    triggerImageCapture();
-                }
+            // When the session is ready, we start capture.
+            mCaptureSession = cameraCaptureSession;
+            triggerImageCapture(false);
+        }
 
-                @Override
-                public void onConfigureFailed(CameraCaptureSession cameraCaptureSession) {
-                    Log.e(TAG, "Failed to configure camera");
-                }
-            };
+        @Override public void onConfigureFailed(CameraCaptureSession cameraCaptureSession) { Log.e(TAG, "Failed to configure camera"); }
+    };
+
+    private CameraCaptureSession.StateCallback mSessionCallbackHR = new CameraCaptureSession.StateCallback() {
+        @Override public void onConfigured(CameraCaptureSession cameraCaptureSession) {
+            // The camera is already closed
+            if (mCameraDevice == null) { return; }
+
+            // When the session is ready, we start capture.
+            mCaptureSessionHR = cameraCaptureSession;
+            triggerImageCapture(true);
+        }
+
+        @Override public void onConfigureFailed(CameraCaptureSession cameraCaptureSession) { Log.e(TAG, "Failed to configure camera"); }
+    };
 
     /**
      * Execute a new capture request within the active session
      */
-    private void triggerImageCapture() {
+    private void triggerImageCapture(boolean is_hires) {
         try {
             final CaptureRequest.Builder captureBuilder =
                     mCameraDevice.createCaptureRequest(CameraDevice.TEMPLATE_STILL_CAPTURE);
-            captureBuilder.addTarget(mImageReader.getSurface());
+            if(is_hires)
+                captureBuilder.addTarget(mImageReader.getSurface());
+            else
+                captureBuilder.addTarget(mImageReaderHR.getSurface());
             captureBuilder.set(CaptureRequest.CONTROL_AE_MODE, CaptureRequest.CONTROL_AE_MODE_ON);
             Log.d(TAG, "Session initialized.");
-            mCaptureSession.capture(captureBuilder.build(), mCaptureCallback, null);
+            if(is_hires)
+                mCaptureSession.capture(captureBuilder.build(), mCaptureCallback, null);
+            else
+                mCaptureSessionHR.capture(captureBuilder.build(), mCaptureCallback, null);
         } catch (CameraAccessException cae) {
             Log.e(TAG, "camera capture exception", cae);
         }
@@ -234,7 +252,7 @@ public class DoorbellCamera {
                                                TotalCaptureResult result) {
                     if (session != null) {
                         session.close();
-                        mCaptureSession = null;
+                        //mCaptureSession = null;
                         Log.d(TAG, "CaptureSession closed");
                     }
                 }
