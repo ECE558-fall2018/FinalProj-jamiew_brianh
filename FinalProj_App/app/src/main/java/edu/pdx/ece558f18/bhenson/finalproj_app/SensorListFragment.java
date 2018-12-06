@@ -87,8 +87,8 @@ public class SensorListFragment extends Fragment {
         mSensorListObj_master = new SensorListObj(0);
         // create the temp as a copy of the master
         mSensorListObj_temp = new SensorListObj(mSensorListObj_master);
-
         // get the sensor object from the database, the list is empty until that happens
+        // this can stay up here cuz it only happens once, no need to register/unregister
         mMyDatabase.child(Keys.DB_SENSOR_CONFIG).addListenerForSingleValueEvent(mDBListenerSensrConfig);
 
         return v;

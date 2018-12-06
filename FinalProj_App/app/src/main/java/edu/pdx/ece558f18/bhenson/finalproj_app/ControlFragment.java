@@ -111,12 +111,6 @@ public class ControlFragment extends Fragment {
         mCheckBox.setChecked(prefs.getBoolean(Keys.KEY_AUTOLOGIN, Keys.DEFAULT_AUTOLOGIN));
 
 
-        // get initial values for armtoggle and timeout from database
-        // note: this only needs to get the value for the timeout, the other listener gets the armed status
-//        mMyDatabase.addListenerForSingleValueEvent(mDBListenerTimeout);
-
-        mMyDatabase.child(Keys.DB_ARMED).addValueEventListener(mDBListenerPiArmed);
-
 
         // attach listeners here
         mCheckBox.setOnClickListener(mOnClickAutologinCheckbox);
@@ -261,11 +255,15 @@ public class ControlFragment extends Fragment {
         super.onStart();
         Log.d(TAG, "onStart()");
         updatePiConnectionState(((PagerActivity)getActivity()).mPiIsConnected);
+        // get initial values for armtoggle and keep listening afterwards
+        mMyDatabase.child(Keys.DB_ARMED).addValueEventListener(mDBListenerPiArmed);
     }
     @Override
     public void onStop() {
         super.onStop();
         Log.d(TAG, "onStop()");
+        // unregister
+        mMyDatabase.child(Keys.DB_ARMED).removeEventListener(mDBListenerPiArmed);
     }
     @Override
     public void onDestroy() {

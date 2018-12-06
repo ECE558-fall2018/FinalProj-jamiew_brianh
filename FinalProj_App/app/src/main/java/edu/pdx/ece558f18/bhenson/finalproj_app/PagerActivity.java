@@ -68,7 +68,6 @@ public class PagerActivity extends AppCompatActivity
 
         // get instance of the database (see proj3 example for more)
         mMyDatabase = FirebaseDatabase.getInstance().getReference().child(Keys.DB_TOPFOLDER).child(mAuth.getCurrentUser().getUid());
-        mMyDatabase.child(Keys.DB_CONNECTED).addValueEventListener(mDBListenerPiConnected);
 
 
 
@@ -265,12 +264,6 @@ public class PagerActivity extends AppCompatActivity
     public void returnToLogin() {
         // this does the whole logout operation
 
-        // first, gotta unregister any listeners i think?????
-        mMyDatabase.child(Keys.DB_CONNECTED).removeEventListener(mDBListenerPiConnected);
-        mMyDatabase.child(Keys.DB_CAMERA_STATE).removeEventListener(((CameraFragment)mSectionsPagerAdapter.getRegisteredFragment(2)).mDBListenerCameraState);
-        //mMyDatabase.child(Keys.DB_VOIP_REMOTE_URI).removeEventListener(((CameraFragment)mSectionsPagerAdapter.getRegisteredFragment(2)).mDBListenerRemoteURI);
-        mMyDatabase.child(Keys.DB_ARMED).removeEventListener(((ControlFragment)mSectionsPagerAdapter.getRegisteredFragment(1)).mDBListenerPiArmed);
-
         // TODO: delete apptoken from the Database? otherwise I will continue to receive notifications after I log out
         // even if I sign in as a different user, i will receive notifications for the first user
 
@@ -390,6 +383,7 @@ public class PagerActivity extends AppCompatActivity
         } catch (NullPointerException npe) {
             Log.d(TAG, "notificaiton manager somehow failed, not sure how", npe);
         }
+        mMyDatabase.child(Keys.DB_CONNECTED).addValueEventListener(mDBListenerPiConnected);
 
     }
     @Override
@@ -401,6 +395,7 @@ public class PagerActivity extends AppCompatActivity
     protected void onStop() {
         super.onStop();
         Log.d(TAG, "onStop()");
+        mMyDatabase.child(Keys.DB_CONNECTED).removeEventListener(mDBListenerPiConnected);
     }
     @Override
     protected void onDestroy() {

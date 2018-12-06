@@ -162,12 +162,6 @@ public class CameraFragment extends Fragment {
         mButtRecord.setText(R.string.begin_record_label);
 
 
-        // attach the onValueChanged listener
-        mMyDatabase.child(Keys.DB_CAMERA_STATE).addValueEventListener(mDBListenerCameraState);
-
-        // read database to get remote URI
-        mMyDatabase.child(Keys.DB_SOUND).addValueEventListener(mDBListenerSoundDownloadStatus);
-
         return v;
     }
 
@@ -919,7 +913,7 @@ public class CameraFragment extends Fragment {
                     // create toast saying what file name was used
                     // enable both buttons at the end
                     // write state 3 to the database when i'm done with all this
-                    beginDownloadBigImage(Keys.FILE_MED);
+                    beginDownloadBigImage(Keys.FILE_BIG);
                     break;
                 default:
                     Log.d(TAG, "somehow got an invalid camera state, " + state);
@@ -976,13 +970,21 @@ public class CameraFragment extends Fragment {
         super.onStart();
         Log.d(TAG, "onStart()");
         updatePiConnectionState(((PagerActivity)getActivity()).mPiIsConnected);
+        // camera state listener
+        mMyDatabase.child(Keys.DB_CAMERA_STATE).addValueEventListener(mDBListenerCameraState);
+        // recording upload state listener
+        mMyDatabase.child(Keys.DB_SOUND).addValueEventListener(mDBListenerSoundDownloadStatus);
     }
     @Override
     public void onStop() {
         super.onStop();
         Log.d(TAG, "onStop()");
-        // call this function whenever the app stops (lock screen for example)
         //actuallyEndTheCall();
+        // camera state listener
+        mMyDatabase.child(Keys.DB_CAMERA_STATE).removeEventListener(mDBListenerCameraState);
+        // recording upload state listener
+        mMyDatabase.child(Keys.DB_SOUND).removeEventListener(mDBListenerSoundDownloadStatus);
+        // call this function whenever the app stops (lock screen for example)
         stopRecording(false);
     }
     @Override
