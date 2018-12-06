@@ -50,6 +50,8 @@ public class DoorbellCamera {
     //private static final int IMAGE_HEIGHT = 240;
     private static final int IMAGE_WIDTH = 640;
     private static final int IMAGE_HEIGHT = 480;
+    private static final int IMAGE_WIDTH_HR = 3200;
+    private static final int IMAGE_HEIGHT_HR = 2400;
     private static final int MAX_IMAGES = 1;
 
     private CameraDevice mCameraDevice;
@@ -60,6 +62,7 @@ public class DoorbellCamera {
      * An {@link ImageReader} that handles still image capture.
      */
     private ImageReader mImageReader;
+    private ImageReader mImageReaderHR;
 
     // Lazy-loaded singleton, so only one instance of the camera is created.
     private DoorbellCamera() {
@@ -78,7 +81,7 @@ public class DoorbellCamera {
      */
     public void initializeCamera(Context context,
                                  Handler backgroundHandler,
-                                 ImageReader.OnImageAvailableListener imageAvailableListener) {
+                                 ImageReader.OnImageAvailableListener imageAvailableListener, ImageReader.OnImageAvailableListener imageAvailableListenerHR) {
         // Discover the camera instance
         Log.d(TAG, "In function initializeCamera ");
         Log.d(TAG, "Context is: " + context.toString());
@@ -104,6 +107,13 @@ public class DoorbellCamera {
         mImageReader.setOnImageAvailableListener(
                 imageAvailableListener, backgroundHandler);
 
+        // Create HiRes image processor
+        /*
+        mImageReaderHR = ImageReader.newInstance(IMAGE_WIDTH_HR, IMAGE_HEIGHT_HR,
+                ImageFormat.JPEG, MAX_IMAGES);
+        mImageReader.setOnImageAvailableListener(
+                imageAvailableListenerHR, backgroundHandler);
+        */
         // Open the camera resource
         try {
             manager.openCamera(id, mStateCallback, backgroundHandler);

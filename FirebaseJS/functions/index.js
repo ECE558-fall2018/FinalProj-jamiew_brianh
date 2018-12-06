@@ -43,8 +43,8 @@ exports.checkBaseStationConnected = functions.database.ref('users/{userUid}/pi_c
 		const payload = {
 			//priority: 'high',
 			notification: {
-				title: 'Security Base Station has lost connection!',
-				body: `Security Base Station has disconnected from the server`,
+				title: 'SecApp: Warning',
+				body: `Unexpectedly lost connection to base station`,
 				sound: 'default'
 			},
 			data:{
@@ -127,8 +127,8 @@ exports.checkStationAlarm = functions.database.ref('/users/{userUid}/pi_triggere
 	const payload = {
 		//priority: 'high',
 		notification: {
-			title: 'Alarm recieved from Security Base Station!',
-			body: `Security Base Station sent an alarm - Uknown reason`,
+			title: '!!! SecApp Alert!!!',
+			body: `Base Station has detected an intruder!`,
 			sound: 'default'
 		},
 		data:{
