@@ -144,7 +144,7 @@ public class CameraFragment extends Fragment {
             // set up a pointer to the sound file destination (local storage)
             mSoundFile = new File(getContext().getFilesDir(), Keys.FILE_SOUND);
             // find the existing image file
-            File file = new File(getContext().getFilesDir(), Keys.FILE_SMALL);
+            File file = new File(getContext().getFilesDir(), mAuth.getCurrentUser().getUid() + Keys.FILE_SMALL);
             if (file.exists()) {
                 // pipe it into the image view
                 Log.d(TAG, "initializing imageview with picture from " + file.getAbsolutePath());
@@ -679,7 +679,7 @@ public class CameraFragment extends Fragment {
                 mDownloadProgress.setProgress(15);
 
                 // part 1: save it into local storage
-                saveImageToLocal(sf, bytes);
+                saveImageToLocal(mAuth.getCurrentUser().getUid() + sf, bytes);
                 // part 2: display on imageview
                 displayImage(bytes);
 

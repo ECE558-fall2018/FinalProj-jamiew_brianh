@@ -19,6 +19,8 @@ import com.google.firebase.auth.FirebaseAuth;
 import com.google.firebase.auth.FirebaseUser;
 import com.google.firebase.database.*;
 
+import java.io.File;
+
 public class PagerActivity extends AppCompatActivity
         implements  ControlFragment.ControlFragmentListener,
                     CameraFragment.CameraFragmentListener {
@@ -264,10 +266,14 @@ public class PagerActivity extends AppCompatActivity
     public void returnToLogin() {
         // this does the whole logout operation
 
-        // TODO: delete apptoken from the Database? otherwise I will continue to receive notifications after I log out
+        // delete apptoken from the Database? otherwise I will continue to receive notifications after I log out
         // even if I sign in as a different user, i will receive notifications for the first user
+        mMyDatabase.child(Keys.DB_APPTOKEN).removeValue();
 
-        // TODO: consider deleting the local storage, too? so the next user won't see the last picture taken by the prev user?
+        // deleting the local storage, too? so the next user won't see the last picture taken by the prev user?
+        File file = new File(this.getFilesDir(), mAuth.getCurrentUser().getUid() + Keys.FILE_SMALL);
+        file.delete();
+
         // sign out from firebase
         mAuth.signOut();
         // erase stored username and password from sharedprefs
