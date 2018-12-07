@@ -1,7 +1,7 @@
 <resources>
-    <string name="app_name">FinalProj_App</string>
-    <string name="title_activity_pager">PagerActivity</string>
-    <string name="title_activity_login">Sign in</string>
+    <string name="app_name">FinalProj_SecApp</string>
+    <string name="title_activity_pager">SecApp</string>
+    <string name="title_activity_login">SecApp - Sign in</string>
     <string name="error">!ERROR!</string>
 
     <!-- Strings related to messaging service -->
