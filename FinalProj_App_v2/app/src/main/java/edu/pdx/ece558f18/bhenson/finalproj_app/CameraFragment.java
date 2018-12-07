@@ -172,8 +172,8 @@ public class CameraFragment extends Fragment {
     protected void updatePiConnectionState(boolean b) {
         if(b != mIsConnected) Log.d(TAG, "pi_connected state changed, now " + b);
         if(b) {
-            // the voip button gets turned on only if i already know the destination URI
-            mButtRecord.setEnabled(true);
+            // the record button enable/disable is independent of the pi connection state
+            // mButtRecord.setEnabled(true);
             // the others depend on the state
             if(mCameraState == 0) {
                 mButtManual.setEnabled(true); mButtHires.setEnabled(false);
@@ -186,8 +186,9 @@ public class CameraFragment extends Fragment {
                 mDownloadProgress.setVisibility(View.VISIBLE);
             }
         } else {
+            // the record button enable/disable is independent of the pi connection state
+            // mButtRecord.setEnabled(false);
             // disable the buttons, regardless of what state the camera is in
-            mButtRecord.setEnabled(false);
             mButtManual.setEnabled(false); mButtHires.setEnabled(false);
             mDownloadProgress.setVisibility(View.INVISIBLE);
             mRecordProgress.setVisibility(View.INVISIBLE);
