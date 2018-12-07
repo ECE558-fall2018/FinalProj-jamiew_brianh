@@ -96,12 +96,14 @@ public class MainActivity extends Activity {
     public static final String FILE_SOUND_DEFAULT = "default_alarm_sound.3gp";
     public static final String FILE_SOUND_CUSTOM =  "custom_alarm_sound.3gp";
     public static final long TWO_MEGABYTE = 1024 * 1024 * 2;
-    public static final int ALARM_SOUND_MAX_LOOPS = 3;
 
-
-    // true if pullup resistors, false if pulldown resistors
+    //////////////////////////////////////////////
+    // these configure behavior I wasn't sure about
+    // TODO true if pullup resistors, false if pulldown resistors
     public static final boolean SENSOR_PULLUP = true;
-
+    // TODO now that we have the "is alarming" flag to give some degree of buffer, do we really need to self-disarm?
+    public static final boolean MOUSETRAP = true;
+    public static final int ALARM_SOUND_MAX_LOOPS = 3;
 
     // Variables for Firebase Database
     private FirebaseAuth mAuth;
@@ -119,6 +121,8 @@ public class MainActivity extends Activity {
     private DoorbellCamera mCamera;
     private Handler mCameraHandler;
     private HandlerThread mCameraThread;
+
+    private Handler mDelayHandler = new Handler(); // attached to THIS (main) thread
 
     private File mPlayThisFile = null;
     private MediaPlayer mPlayer;
@@ -235,6 +239,7 @@ public class MainActivity extends Activity {
                 } else {
                     // time to stop!
                     mp.stop(); mSoundLoopCount = 0; mIsAlarming = false;
+                    Log.d(TAG, "done looping over alarm");
                 }
             }
         });
@@ -275,8 +280,8 @@ public class MainActivity extends Activity {
         // add the listeners for the various states... is it only 4? i thought it would be more
         mMyDatabase.child("pi_armed").addValueEventListener(mDBListenerArmedStatus);
         mMyDatabase.child("sound/new_sound").addValueEventListener(mDBListenerNewSound);
-        mMyDatabase.child("camera/photo_pipeline_state").addValueEventListener(mDBListenerCameraUploadDownload);
-        mMyDatabase.child("sensor_config/sensor_config_obj").addValueEventListener(mDBListenerSensorConfig);
+        // TODO UNCOMMENT mMyDatabase.child("camera/photo_pipeline_state").addValueEventListener(mDBListenerCameraUploadDownload);
+        // TODO UNCOMMENT mMyDatabase.child("sensor_config/sensor_config_obj").addValueEventListener(mDBListenerSensorConfig);
 
 
         ///////////////////////////////////////////////////////////////////////////
@@ -294,16 +299,59 @@ public class MainActivity extends Activity {
             return;
         }
 
-        mCamera.takePicture();
         DoorbellCamera.dumpFormatInfo(this);
 
 
+        // 4 second delay
+        mDelayHandler.postDelayed(mTestSensorConfig, 4000);
+        // further 4 seconds
+        mDelayHandler.postDelayed(mTestPlaySound, 8000);
+        // another 4 seconds
+        mDelayHandler.postDelayed(mTestTakePhoto, 12000);
 
+
+
+
+
+
+        // keep this message tho
         Log.d(TAG, "End of onCreate ...");
     } // End of onCreate
 
 
     // ================================================================================================================
+
+    // TODO: delete these runnables once testing is done
+    private Runnable mTestSensorConfig = new Runnable() {
+        @Override public void run() {
+            Log.d(TAG, "test #1");
+            // create sensor list obj with the right number of entries & labels, but all 0s
+            SensorListObj slo = new SensorListObj();
+
+            slo.mTypeList[0] = 1; // set BCM8 to be a contact sensor
+
+            configSensorsFromSLO(slo);
+        }
+    };
+
+    private Runnable mTestPlaySound = new Runnable() {
+        @Override public void run() {
+            Log.d(TAG, "test #2");
+
+            mPlaySoundFile();
+        }
+    };
+
+    private Runnable mTestTakePhoto = new Runnable() {
+        @Override public void run() {
+            Log.d(TAG, "test #3");
+
+            // note: will try to take & upload small, then big photos
+            mCamera.takePicture(false);
+        }
+    };
+
+
 
 
 
@@ -315,9 +363,11 @@ public class MainActivity extends Activity {
             Log.d(TAG, "sensor tripped! pin="+g.getName()+", mIsArmed="+mIsArmed+", mIsAlarming="+mIsAlarming+", mIsConfiguringGpio="+mIsConfiguringGpio);
             if(mIsArmed && !mIsConfiguringGpio && !mIsAlarming) {
                 Log.d(TAG, "~~~~ALARM IS VALID!!!~~~~");
-                // disarm myself, local variable and in database
-                mIsArmed = false;
-                mMyDatabase.child("pi_armed").setValue(false);
+                if(MOUSETRAP) {
+                    // disarm myself, local variable and in database
+                    mIsArmed = false;
+                    mMyDatabase.child("pi_armed").setValue(false);
+                }
                 // signal the Functions that an alarm happened
                 mMyDatabase.child("pi_triggered").setValue(true);
 
@@ -423,8 +473,8 @@ public class MainActivity extends Activity {
                 case 1:
                     // try to take a photo
                     captureSmallPhoto();
-                    // TODO: once image capture is working, this setValue happens in the onSuccess upload listener
-                    mMyDatabase.child("camera/photo_pipeline_state").setValue(2);
+                    // TODO: once image capture is working, comment this (this setValue happens in the onSuccess upload listener)
+                    //mMyDatabase.child("camera/photo_pipeline_state").setValue(2);
                     break;
                 case 2:
                     // do nothing
@@ -438,7 +488,7 @@ public class MainActivity extends Activity {
                     // try to upload the hires photo
                     // if it exists, it begins... if it doesnt exist, it sets database to state 3
                     uploadBigImage();
-                    // TODO: once image capture is working, comment this
+                    // TODO: once image capture is working, comment this (this setValue happens in the onSuccess upload listener)
                     //mMyDatabase.child("camera/photo_pipeline_state").setValue(5);
                     break;
                 case 5:
@@ -672,6 +722,7 @@ public class MainActivity extends Activity {
     // WORK-IN-PROGRESS
     // TODO
     private void captureSmallPhoto() {
+        Log.d(TAG, "beginning capture small photo");
         // invalidate the previously-held big image (if there was one)
         mHasSavedBigImage = false;
         // turn on LED1
@@ -686,6 +737,7 @@ public class MainActivity extends Activity {
     // WORK-IN-PROGRESS
     // TODO
     private void captureBigPhoto() {
+        Log.d(TAG, "beginning capture big photo");
         // this is called when the small image is done being captured
         // NOTE: giving up on the "capture one image and reformat it into big & small versions" plan
         // instead just take 2 photos in rapid succession, its not as clean but oh well
@@ -721,15 +773,18 @@ public class MainActivity extends Activity {
 
             if(image.getHeight() == 480) {
                 // small photo came out of the pipeline!!! now do something with it
+                Log.d(TAG, "DONE with capture small photo");
                 // turn off LED1
                 mIndicator1.setValue(false);
                 uploadSmallimage(imageBytes);
                 // initiate capture of a second photo in hires mode
                 captureBigPhoto();
+
             } else if(image.getHeight() == 2400){
+                // big photo came out of the pipeline!!! now do something with it
+                Log.d(TAG, "DONE with capture big photo");
                 // turn off LED2
                 mIndicator2.setValue(false);
-                // big photo came out of the pipeline!!! now do something with it
                 saveBigImage(imageBytes);
             } else {
                 Log.d(TAG, "found unexpected image height!");
