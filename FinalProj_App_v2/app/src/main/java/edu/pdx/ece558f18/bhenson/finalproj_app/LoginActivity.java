@@ -101,8 +101,6 @@ public class LoginActivity extends AppCompatActivity {
     }
 
 
-    // TODO: try making a handler that runs the progress bar updates, see if that makes it animate?
-
     // function: launch next activity
     private void proceedToApp() {
         Intent next = new Intent(LoginActivity.this, PagerActivity.class);
