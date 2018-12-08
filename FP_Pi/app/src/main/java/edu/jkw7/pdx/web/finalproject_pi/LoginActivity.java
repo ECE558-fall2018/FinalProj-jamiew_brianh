@@ -46,7 +46,7 @@ import java.util.List;
 public class LoginActivity extends Activity implements LoaderCallbacks<Cursor> {
 
     // Tag for logging
-    public static final String TAG = "LOGIN_ACTIVITY";
+    public static final String TAG = "SEC_login";
 
     // Cheat email and password
     private String cheat_email = "admin@pdx.edu";
