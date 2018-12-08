@@ -46,52 +46,41 @@ import java.io.FileOutputStream;
 import java.io.IOException;
 import java.io.InputStream;
 import java.nio.ByteBuffer;
-//import java.util.Map;
 
-/**
- * Skeleton of an Android Things activity.
- * <p>
- * Android Things peripheral APIs are accessible through the class
- * PeripheralManagerService. For example, the snippet below will open a GPIO pin and
- * set it to HIGH:
- *
- * <pre>{@code
- * PeripheralManagerService service = new PeripheralManagerService();
- * mLedGpio = service.openGpio("BCM6");
- * mLedGpio.setDirection(Gpio.DIRECTION_OUT_INITIALLY_LOW);
- * mLedGpio.setValue(true);
- * }</pre>
- * <p>
- * For more complex peripherals, look for an existing user-space driver, or implement one if none
- * is available.
- *
- * @see <a href="https://github.com/androidthings/contrib-drivers#readme">https://github.com/androidthings/contrib-drivers#readme</a>
- */
+
 
 /*
  * Portions of this code were taken from an open-source android activity found at this website on 12/5/2018
  * https://github.com/androidthings/doorbell/blob/master/app/src/main/java/com/example/androidthings/doorbell/DoorbellActivity.java
  */
+
+/**
+ * Jamie Williams and Brian Henson - Updated 12/7/2018
+ *
+ * Class for the Main Activity of the Security Base Station
+ *      - To run on a Raspberry Pi with Android Things
+ * This code does the following:
+ *      - Connects to Firebase database and Cloud Storage
+ *      - Sets pi_connected to true in database, and sets up disconnect listener to set to false
+ *      - Sets listener for pi_armed
+ *      - Checks for new alarm sound file in cloud storage, and tries to download, and stores in local storage
+ *      - Sets up and implements and camera functionality
+ *          [ERROR with Hardware - Camera not detected by Pi, but finds a "Camera ID 0" and uses that, but never takes a picture]
+ *          - Takes two photos upon alarm trigger (regular and HiRes)
+ *          - Uploads smaller image to Cloud Storage immediately, uploads HiRes image on request
+ *      - Configures sensor pins and sets up listeners for them
+ *
+ *      - On a sensor trigger, checks if armed and, if so, does the following:
+ *          -Takes a picture
+ *          -Plays a custom alarm sound
+ *          -Notifies the Database of a trigger
+ *          -Uploads the picture to Cloud Storage
+ */
 public class MainActivity extends Activity {
-
-    // DONE sensor detection & alarm triggering (auto photo & sound)
-
-    // DONE sensor configuration from database
-
-    // TODO range sensor? not likely
-
-    // TESTME make the camera work in low-res mode
-
-    // TESTME take hi-res photos
-
-    // TESTME make the speaker consistiently work (i have some questions)
-
-    // TODO refine the login activity (just replace with newer version of Brian's code?)
-
-    // QUESTION re-evaluate whether loopers and threads are needed for anything
 
     // Tag for logging
     public static final String TAG = "SEC_MainAct";
+
     // file names
     public static final String FILE_IMAGE_SMALL =   "img_0640x0480.jpg";
     public static final String FILE_IMAGE_BIG =     "img_3200x2400.jpg";
@@ -103,44 +92,42 @@ public class MainActivity extends Activity {
     // these configure behavior I wasn't sure about
     // TODO true if pullup resistors, false if pulldown resistors
     public static final boolean SENSOR_PULLUP = true;
-    // TODO now that we have the "is alarming" flag to give some degree of buffer, do we really need to self-disarm?
-    public static final boolean MOUSETRAP = true;
-    public static final int ALARM_SOUND_MAX_LOOPS = 3;
-    public static final int TIME_TO_PLAY = 5000;
+    public static final boolean MOUSETRAP = true; // If the pi self-resets
+    public static final int TIME_TO_PLAY = 5000; // Maximum time the alarm is allowed to play (in milliseconds)(it loops)
 
     // Variables for Firebase Database
     private FirebaseAuth mAuth;
     private String mUID;
     private DatabaseReference mMyDatabase;
 
-
-    // Variables for handling Firebase Cloud Storage
+    // Variable for handling Firebase Cloud Storage
     private StorageReference mMyStorageBucket;
 
-
-    // Camera junk
+    // Camera handlers and threads
     private DoorbellCamera mCamera;
     private Handler mCameraHandler;
     private HandlerThread mCameraThread;
 
-    private Handler mDelayHandler = new Handler(); // attached to THIS (main) thread
+    // Handler on the main thread
+    private Handler mDelayHandler = new Handler();
 
+    // Variables for playing sound files
     private File mPlayThisFile = null;
     private MediaPlayer mPlayer;
-    private int mSoundLoopCount = 0;
     private boolean mIsAlarming = false;
 
+    // Setting variables
     private boolean mIsArmed = false;
     private boolean mHasSavedBigImage = false; // indicates that at a big image has been saved at least once since booting
-    private boolean mSkipNextImageCapture = false;
+    //private boolean mSkipNextImageCapture = false;
     private boolean mIsConfiguringGpio = false; // just to be safe, lock out any alarms while fiddling with GPIO
 
-
+    // GPIO variables
     public static final String INDICATOR_LED1 = "BCM6"; // pin connected to the LED indicator 1
     public static final String INDICATOR_LED2 = "BCM7"; // pin connected to the LED indicator 2
     public static final String SENSOR_TEST_PIN = "BCM8"; // pin for hardcoded contact sensor
     /* NOTE:
-    BCM1 does not exist? odd
+    BCM1 does not exist
     BCM2/3 are I2C
     BCM4/5/6/7 are for LED indicators (probably only use 1 tho, maybe 2)
     BCM8+ are planned to be configurable sensor pins.
@@ -244,7 +231,7 @@ public class MainActivity extends Activity {
         Log.d(TAG, "Available GPIO: " + mPeriManager.getGpioList());
 
 
-        //next is output LEDs
+        //Output for led indicator lights for testing
         try {
             // TODO: assuming that HIGH = LED ON
             // TODO: connect a second LED indicator
@@ -258,9 +245,6 @@ public class MainActivity extends Activity {
             Log.e(TAG, "Unable to open led pins!!!!!!!", io);
             return;
         }
-
-        // TODO: set up the range-finder-sensor? not likely, but it would go here
-
 
         //////////////////////////////////////////////////////////////////
         // add the listeners for the various states... is it only 4? i thought it would be more
@@ -288,7 +272,7 @@ public class MainActivity extends Activity {
         // TODO: Uncomment out this line to see more information about the camera
         //DoorbellCamera.dumpFormatInfo(this);
 
-
+        // TODO: Uncomment out these to run a few tests of the hardware
         // 4 second delay
         //mDelayHandler.postDelayed(mTestSensorConfig, 4000);
         // further 4 seconds
@@ -297,18 +281,14 @@ public class MainActivity extends Activity {
         //mDelayHandler.postDelayed(mTestTakePhoto, 12000);
 
 
-
-
-
-
-        // keep this message tho
         Log.d(TAG, "End of onCreate ...");
     } // End of onCreate
 
 
     // ================================================================================================================
 
-    // TODO: delete these runnables once testing is done
+    // TODO: Do not use these runnables once testing is done
+    // Test runnable for sensor configuration
     private Runnable mTestSensorConfig = new Runnable() {
         @Override public void run() {
             Log.d(TAG, "test #1");
@@ -321,6 +301,7 @@ public class MainActivity extends Activity {
         }
     };
 
+    // Test runnable for media player and custom alarm
     private Runnable mTestPlaySound = new Runnable() {
         @Override public void run() {
             Log.d(TAG, "test #2");
@@ -330,6 +311,7 @@ public class MainActivity extends Activity {
         }
     };
 
+    // Test runnable ot take and upload a picture
     private Runnable mTestTakePhoto = new Runnable() {
         @Override public void run() {
             Log.d(TAG, "test #3");
@@ -347,11 +329,7 @@ public class MainActivity extends Activity {
         }
     };
 
-
-
-
-
-    // done? (pending test)
+    // Trigger an alarm on gpio (sensor) trigger
     private GpioCallback mAlarmEvent = new GpioCallback() {
         @Override public boolean onGpioEdge(Gpio g) {
             // this function is called when a door or vibration sensor is triggered!!
@@ -374,7 +352,6 @@ public class MainActivity extends Activity {
 
                 // signal the Functions that an alarm happened
                 // take a photo & automatically upload, proceeds to state 2 when finished (skip state 1)
-                // IDEA: mSkipNextPhotoCapture.... why did i think this was necessary? i forget...
                 // TODO UNCOMMENT captureSmallPhoto();
 
                 // play the sound (on loop, hopefully) and set mIsAlarming so that it won't be tripped again until it's done looping
@@ -391,15 +368,14 @@ public class MainActivity extends Activity {
 
 
 
-    // done? pending test
+    // Play the sound file on alarm or for testing
     private void mPlaySoundFile() {
-        // this will play the sound on loop 3 times
         if(mPlayThisFile != null) {
             Log.d(TAG, "preparing to play alarm sound!");
             try {
                 //Log.d(TAG, "Trying to access file at: " + mPlayThisFile.getAbsolutePath().toString());
                 mPlayer.setDataSource(mPlayThisFile.getAbsolutePath());
-                mPlayer.prepare(); // might take long! (how long?)
+                mPlayer.prepare(); // might take long!
             } catch (IOException ex) {
                 Log.e(TAG, "Error with sound shit", ex);
             } catch (IllegalStateException ise) {
@@ -408,19 +384,20 @@ public class MainActivity extends Activity {
             Log.d(TAG, "starting to play alarm sound!");
             mIsAlarming = true;
             mPlayer.start();
-            mDelayHandler.postDelayed(mStopSound, TIME_TO_PLAY);
+            mDelayHandler.postDelayed(mStopSound, TIME_TO_PLAY); // Turn off sound (which loops) after a number of milliseconds
         } else {
             Log.d(TAG, "somehow never set the alarm file, perhaps this was called before the cloud download failed?");
         }
     }
-    // stop the music doo doo doo
+
+    // Runnable to stopy playing the alarm
     private Runnable mStopSound = new Runnable () {@Override public void run() { mPlayer.stop(); Log.d(TAG, "stopping sound"); mIsAlarming = false;}};
 
 
 
 
 
-    // mostly done, just add "take photo" function
+    // Listener for uploading or downloading a picture to Cloud Storage
     protected ValueEventListener mDBListenerCameraUploadDownload = new ValueEventListener() {
         @Override public void onDataChange(@NonNull DataSnapshot dataSnapshot) {
             //Log.d(TAG, "Logged a data change");
@@ -475,7 +452,8 @@ public class MainActivity extends Activity {
         }
     };
 
-    // pretty sure this works, but we should re-test
+    // Checks if new custom alarm has been uploaded to Cloud Storage
+    //  (by checking database flag value)
     protected ValueEventListener mDBListenerNewSound = new ValueEventListener() {
         @Override public void onDataChange(@NonNull DataSnapshot dataSnapshot) {
             //Log.d(TAG, "Logged a data change");
@@ -501,7 +479,7 @@ public class MainActivity extends Activity {
         }
     };
 
-    // done (pending test)
+    // Listener of Database value: pi_armed, to tell when phone app arms base station
     // instead of attaching listeners here, they are always attached, they just sometimes do nothing
     protected ValueEventListener mDBListenerArmedStatus = new ValueEventListener() {
         @Override public void onDataChange(@NonNull DataSnapshot dataSnapshot) {
@@ -524,7 +502,7 @@ public class MainActivity extends Activity {
         }
     };
 
-    // done? pushed the work to configSensorsFromSLO() function
+    // Checks if a new sensor configuration has been set by the app
     protected ValueEventListener mDBListenerSensorConfig = new ValueEventListener() {
         @Override public void onDataChange(@NonNull DataSnapshot dataSnapshot) {
             //Log.d(TAG, "Logged a data change");
@@ -552,7 +530,7 @@ public class MainActivity extends Activity {
     };
 
 
-    // done? pending test
+    // Configure sensors in separate class
     private void configSensorsFromSLO(SensorListObj slo) {
         // idea: iterate over the SensorListObj contents and configure each pin as contact/vibration/DC
         // also pause to re-calibrate the range sensor? (would it be here or somewhere else?)(unset local "armed" value while calibrating)
@@ -615,7 +593,7 @@ public class MainActivity extends Activity {
 
 
 
-    // pretty sure this is done, but we should re-test
+    // Downloads new custom alarm sound from Cloud Storage
     private void tryToDownloadSoundFile() {
         Log.d(TAG, "Donwloading sound file");
         mMyStorageBucket.child(FILE_SOUND_CUSTOM).getBytes(TWO_MEGABYTE).addOnSuccessListener(new OnSuccessListener<byte[]>() {
@@ -660,7 +638,7 @@ public class MainActivity extends Activity {
         });
     }
 
-    // done
+    // Save a file to Android local storage
     private boolean saveFileToLocal(byte[] bytes, String filename) {
         // return false if everything is OK
         // return true if there was some exception
@@ -684,7 +662,7 @@ public class MainActivity extends Activity {
     };
 
 
-    // WORK-IN-PROGRESS
+    // Take a photo (not at High Resolution)
     private void captureSmallPhoto() {
         Log.d(TAG, "beginning capture small photo");
         // invalidate the previously-held big image (if there was one)
@@ -702,7 +680,7 @@ public class MainActivity extends Activity {
     }
 
 
-    // WORK-IN-PROGRESS
+    // Takes a photo (at High Resolution)
     private void captureBigPhoto() {
         Log.d(TAG, "beginning capture big photo");
         // this is called when the small image is done being captured
@@ -724,7 +702,8 @@ public class MainActivity extends Activity {
 
 
 
-    // work in progress
+    // Checks for when an image has been taken by the camera
+    //  Either tries to save image into local (for HiRes image) or upload it to Cloud Storage
     private ImageReader.OnImageAvailableListener mOnImageAvailableListener = new ImageReader.OnImageAvailableListener() {
         @Override public void onImageAvailable(ImageReader reader) {
             Log.d(TAG, "Listener found available image!!!!!!!!");
@@ -763,7 +742,8 @@ public class MainActivity extends Activity {
         }
     };
 
-    // work in progress
+    // Checks for when an image has been taken by the camera
+    //      This one was intended for high resolution photos
     private ImageReader.OnImageAvailableListener mOnImageAvailableListenerHR = new ImageReader.OnImageAvailableListener() {
         @Override public void onImageAvailable(ImageReader reader) {
             Log.d(TAG, "Listener found available image!!!!!!!!");
@@ -802,7 +782,7 @@ public class MainActivity extends Activity {
         }
     };
 
-    // done
+    // Save HiRes photo to local storage (Wrapper method)
     private void saveBigImage(byte[] imageBytes) {
         // this is called as soon as the camera is done taking the hires image
         saveFileToLocal(imageBytes, FILE_IMAGE_BIG);
@@ -810,7 +790,7 @@ public class MainActivity extends Activity {
         mHasSavedBigImage = true;
     }
 
-    // done (pending test)
+    // Upload HiRes image to Cloud Storage
     private void uploadBigImage() {
         // this is called only when the camera pipeline moves to state 4
         if(!mHasSavedBigImage) {
@@ -844,7 +824,7 @@ public class MainActivity extends Activity {
         }
     }
 
-    // done (pending test)
+    // Upload image (not HiRes) to Cloud Storage
     private void uploadSmallimage(final byte[] imageBytes) {
         // this is called as soon as the camera is done taking the small image
         Log.d(TAG, "In uploadSmallimage, attemping to do storage write!");
@@ -889,14 +869,13 @@ public class MainActivity extends Activity {
     // so releasing resources here isn't strictly necessary
     // but its good policy
     @Override protected void onDestroy() {
-        Log.d(TAG, "dyingggggggggggggggggggg");
+        Log.d(TAG, "App has reached onDestroy");
         super.onDestroy();
         mCamera.shutDown();
 
-        mCameraThread.quitSafely();
-        //mAlarmThread.quitSafely();
-        //mCloudThread.quitSafely();
+        mCameraThread.quitSafely(); // End camera thread
 
+        // Close gpio pins
         if(mSensorPin != null) {
             try {
                 mSensorPin.close();
@@ -915,4 +894,4 @@ public class MainActivity extends Activity {
         }
     }
 
-}
+} // End of Main Activity Class

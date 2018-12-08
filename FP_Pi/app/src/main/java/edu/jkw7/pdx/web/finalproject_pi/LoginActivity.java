@@ -41,6 +41,9 @@ import java.util.List;
 /**
  * Activity to log in to Google Firebase real-time database.
  *      -Created from the Android Studio standard "LoginActivity"
+ * Although it allows for actual email and password to be entered, currently uses hard coded one
+ *  to quickly start up app for testing
+ *
  * Jamie Williams - updated 12/2/2018
  */
 public class LoginActivity extends Activity implements LoaderCallbacks<Cursor> {
@@ -48,6 +51,7 @@ public class LoginActivity extends Activity implements LoaderCallbacks<Cursor> {
     // Tag for logging
     public static final String TAG = "SEC_login";
 
+    // TODO: Remove this if want to log in to different account
     // Cheat email and password
     private String cheat_email = "admin@pdx.edu";
     private String cheat_password = "password";
@@ -116,7 +120,6 @@ public class LoginActivity extends Activity implements LoaderCallbacks<Cursor> {
     }
 
     // function: launch next activity
-    // TODO: is this right?
     private void proceedToApp() {
         Intent next = new Intent(LoginActivity.this, MainActivity.class);
         // add some extras?
@@ -175,17 +178,16 @@ public class LoginActivity extends Activity implements LoaderCallbacks<Cursor> {
             mAuthTask = new UserLoginTask(email, password);
             mAuthTask.execute((Void) null);
 
-            // TODO: Or do I add my completion code here?
         }
     }
 
     private boolean isEmailValid(String email) {
-        //TODO: Replace this with your own logic
+        //TODO: Can add more restrictions on email
         return email.contains("@");
     }
 
     private boolean isPasswordValid(String password) {
-        //TODO: Replace this with your own logic
+        //TODO: Can add more restrictions on password
         return password.length() > 5;
     }
 
@@ -284,7 +286,9 @@ public class LoginActivity extends Activity implements LoaderCallbacks<Cursor> {
 
         @Override
         protected Boolean doInBackground(Void... params) {
-            // TODO: attempt authentication against a network service.
+            // Attempt authentication against a network service
+            // ***********************************************************************************
+            // Here is the actual meat of the login code
 
             try {
                 mAuth.signInWithEmailAndPassword(mEmail, mPassword).addOnCompleteListener(new OnCompleteListener<AuthResult>() {
@@ -294,54 +298,19 @@ public class LoginActivity extends Activity implements LoaderCallbacks<Cursor> {
                             Log.d(TAG, "signInWithEmail:success");
                             Log.d(TAG, "UUID = " + mAuth.getCurrentUser().getUid());
 
-                            // save successful username and pass to sharedprefs, for future logins
-                            /* TODO: Optional implementation feature - not finished
-                            SharedPreferences prefs = getSharedPreferences(FILE_PREFS, Context.MODE_PRIVATE);
-                            SharedPreferences.Editor e = prefs.edit();
-                            e.putString(Keys.KEY_PASS, pass_f);
-                            e.putString(Keys.KEY_USER, username_f);
-                            e.apply();
-                            */
-
                             DatabaseReference userNode = mDatabase.child("users").child(mAuth.getCurrentUser().getUid());
                             userNode.addListenerForSingleValueEvent(new ValueEventListener() {
                                 @Override public void onDataChange(@NonNull DataSnapshot ds) {
                                     // verify that the node exists... if it doesn't exist, then create default fields for everything it will need!
                                     // if the 'email' field is null then assume the whole thing is missing
                                     if(ds.child("email").getValue() == null) {
-                                        // create the node with default values
+                                        // If email is not null, assume valid node
                                         DatabaseReference userNode = mDatabase.child("users").child(mAuth.getCurrentUser().getUid());
-                                        // dont need to create email or apptoken, those created below
-                                        //userNode.child("email");
-                                        //userNode.child("apptoken");
-                                        // TODO: replace these with constants in Keys file
-                                        /* TODO: ARE these wrong??
-                                        userNode.child("pi_timestamp").setValue("err");
-                                        userNode.child("pi_armed").setValue(false);
-                                        userNode.child("pi_connected").setValue(false);
-                                        userNode.child("timeout_threshold").setValue(10);
-                                        userNode.child("control").child("toggle_pi_armed").setValue(false);
-                                        userNode.child("camera").child("photo_pipeline_state").setValue(0);
-                                        // TODO: decide how sound communication is structured
-                                        userNode.child("sound").child("done_uploading_new").setValue(false);
-                                        userNode.child("sound").child("done_downloading_new").setValue(false);
-                                        // TODO: decide how voip is structured, and if using it
-                                        userNode.child("voip").child("app_addr").setValue("err");
-                                        userNode.child("voip").child("app_username").setValue(false);
-                                        userNode.child("voip").child("app_password").setValue(false);
-                                        userNode.child("voip").child("pi_addr").setValue("err");
-                                        userNode.child("voip").child("pi_username").setValue(false);
-                                        userNode.child("voip").child("pi_password").setValue(false);
-                                        // TODO: create empty sensor config object here
-                                        userNode.child("sensor_config").child("sensor_config_obj").setValue("???");
-                                        */
+
                                     }
 
-                                    // once I have logged in and know my UUID then I should try to send the MessagingService token to the database
-                                    // manually get the token
-                                    //FirebaseInstanceId.getInstance().getInstanceId().addOnCompleteListener(afterGetToken);
-                                    //TODO: Move this to main app
-                                    //mDatabase.child("users").child(mAuth.getCurrentUser().getUid()).child("pi_connected").setValue(true);
+                                    // ***********************************************************
+                                    // Done logging in, move to main activity
                                     Log.d(TAG, "Have correctly logged in, moving to main activity");
                                     proceedToApp();
                                 }
@@ -363,17 +332,7 @@ public class LoginActivity extends Activity implements LoaderCallbacks<Cursor> {
                 return false;
             }
 
-            /* TODO: delete this
-            for (String credential : DUMMY_CREDENTIALS) {
-                String[] pieces = credential.split(":");
-                if (pieces[0].equals(mEmail)) {
-                    // Account exists, return true if the password matches.
-                    return pieces[1].equals(mPassword);
-                }
-            }
-            */
 
-            // TODO: register the new account here.
             return true;
         }
 
@@ -383,11 +342,6 @@ public class LoginActivity extends Activity implements LoaderCallbacks<Cursor> {
             showProgress(false);
 
             if (success) {
-                // TODO: I guess add code to call next activity here?
-
-
-
-
 
                 finish();
             } else {
