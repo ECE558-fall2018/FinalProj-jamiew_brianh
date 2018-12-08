@@ -204,8 +204,8 @@ public class CameraFragment extends Fragment {
         @Override public void onClick(View v) {
             // use the same listener but either start/end call depending on state variables
             if(mIsRecording) {
-                // if argument is true, it means stop recording and begin upload
-                // if argument is false, it means abort recording
+                // if stopRecording argument is true, it means stop recording and begin upload
+                // if stopRecording argument is false, it means abort recording
                 stopRecording(true);
             } else {
                 attemptToRecord();
@@ -214,7 +214,7 @@ public class CameraFragment extends Fragment {
     };
 
     protected void attemptToRecord() {
-        // called by the PagerActivity on permissions return
+        // called by the PagerActivity on permissions return, as well as the record button on-click listener
         // stage 1: check permissions
         if(requestPermissionsForRecord()) {
             // if it succeeds, then proceed
@@ -342,269 +342,269 @@ public class CameraFragment extends Fragment {
     // ===========================================================================================================
     // voip stuff
 
-    /*
-    private View.OnClickListener mOnClickVoip = new View.OnClickListener() {
-        @Override public void onClick(View v) {
-            // use the same listener but either start/end call depending on state variables
-            mButtVoip.setEnabled(false);
-            if(!mVoipTalking) {
-                // placing a call:
-                Log.d(TAG, "starting a call");
-                attemptToCall();
-            } else {
-                // hanging up:
-                Log.d(TAG, "ending the call");
-                actuallyEndTheCall();
-            }
-        }
-    };
-
-    protected void attemptToCall() {
-        // called by the PagerActivity on permissions return
-        // stage 1: check permissions
-        if(requestPermissionsForVoip()) {
-            // stage 2: create a profile
-            createSipProfile();
-            // stage 3: register the profile (the hard part)
-            registerSipProfile();
-            // then goes into listener and the listener asynchronously calls actuallyMakeTheCall() if it actually succeeds
-        }
-    }
-
-    private boolean requestPermissionsForVoip() {
-        // return TRUE if it passes, FALSE otherwise
-        // this is called by voip button click, and its also called by pageractivity
-        // AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA I HATE PERMISSIONS
-        if(ContextCompat.checkSelfPermission(getActivity(), Manifest.permission.USE_SIP) != PackageManager.PERMISSION_GRANTED) {
-            Log.d(TAG + TAG2, "need to request sip permissions");
-            ActivityCompat.requestPermissions(getActivity(),
-                    new String[]{Manifest.permission.USE_SIP},
-                    Keys.PERM_REQ_USE_SIP);
-        } else {
-            // if I do somehow have permission, then check the next one
-            if(ContextCompat.checkSelfPermission(getActivity(), Manifest.permission.INTERNET) != PackageManager.PERMISSION_GRANTED) {
-                Log.d(TAG, "need to request internet permissions");
-                ActivityCompat.requestPermissions(getActivity(),
-                        new String[]{Manifest.permission.INTERNET},
-                        Keys.PERM_REQ_INTERNET);
-            } else {
-                // if I do somehow have permission, then check the next one
-                if(ContextCompat.checkSelfPermission(getActivity(), Manifest.permission.RECORD_AUDIO) != PackageManager.PERMISSION_GRANTED) {
-                    Log.d(TAG, "need to request audio permissions");
-                    ActivityCompat.requestPermissions(getActivity(),
-                            new String[]{Manifest.permission.RECORD_AUDIO},
-                            Keys.PERM_REQ_RECORD_AUDIO);
-                } else {
-                    // if I do somehow have permission, then check the next one
-                    if(ContextCompat.checkSelfPermission(getActivity(), Manifest.permission.ACCESS_WIFI_STATE) != PackageManager.PERMISSION_GRANTED) {
-                        Log.d(TAG, "need to request wifi permissions");
-                        ActivityCompat.requestPermissions(getActivity(),
-                                new String[]{Manifest.permission.ACCESS_WIFI_STATE},
-                                Keys.PERM_REQ_ACCESS_WIFI_STATE);
-                    } else {
-                        // if I do somehow have permission, then check the next one
-                        if(ContextCompat.checkSelfPermission(getActivity(), Manifest.permission.WAKE_LOCK) != PackageManager.PERMISSION_GRANTED) {
-                            Log.d(TAG, "need to request wake permissions");
-                            ActivityCompat.requestPermissions(getActivity(),
-                                    new String[]{Manifest.permission.WAKE_LOCK},
-                                    Keys.PERM_REQ_WAKE_LOCK);
-                        } else {
-                            // if I do somehow have permission, then check the next one
-                            if(ContextCompat.checkSelfPermission(getActivity(), Manifest.permission.MODIFY_AUDIO_SETTINGS) != PackageManager.PERMISSION_GRANTED) {
-                                Log.d(TAG, "need to request modify_audio permissions");
-                                ActivityCompat.requestPermissions(getActivity(),
-                                        new String[]{Manifest.permission.MODIFY_AUDIO_SETTINGS},
-                                        Keys.PERM_REQ_MODIFY_AUDIO_SETTINGS);
-                            } else {
-                                // SUCCESS
-                                // I OFFICIALLY HAVE ALL THE PERMISSIONS I MIGHT POSSIBLY NEED
-                                // FINALLY I CAN DO THE THING
-                                return true;
-                            }
-                        }
-                    }
-                }
-            }
-        }
-        return false;
-    }
-
-
-    private void createSipProfile() {
-        mRecordProgress.setVisibility(View.VISIBLE);
-        mRecordProgress.setProgress(20);
-
-        Log.d(TAG, "CAN WE DO IT " + SipManager.isApiSupported(getContext()) + " AND " + SipManager.isVoipSupported(getContext()));
-
-        // stage 1: build the profile
-        SipProfile.Builder builder;
-        try {
-            builder = new SipProfile.Builder(Keys.SIP_APP_USERNAME, Keys.SIP_DOMAIN);
-        } catch (ParseException pe) {
-            Log.d(TAG, "failed to parse the username and domain", pe);
-            mHandler.post(gui2);
-            return;
-        }
-        builder.setPassword(Keys.SIP_APP_PASSWORD);
-        mSipProfile = builder.build();
-
-        Log.d(TAG, "my uri = " + mSipProfile.getUriString());
-    }
-
-    private void registerSipProfile() {
-        // stage 2: register the profile
-        // stage 2.5: actually do the thing AFTER the listener is set up
-        // stage 3: wait for registration result
-        mRecordProgress.setProgress(30);
-        Log.d(TAG, "beginning registration");
-        try {
-            // this is open for send only
-            mSipManager.open(mSipProfile);
-            Log.d(TAG, "am i opened? " + mSipManager.isOpened(mSipProfile.getUriString()));
-            if(!mSipManager.isRegistered(mSipProfile.getUriString())) {
-                mSipManager.register(mSipProfile, Keys.SIP_TIMEOUT, mSipListenerRegistration);
-            } else {
-                Log.d(TAG, "already registered??? gonna just go on, see what happens");
-                actuallyMakeTheCall();
-            }
-            //mSipManager.setRegistrationListener(mSipProfile.getUriString(), mSipListenerRegistration);
-        } catch (SipException se) {
-            Log.d(TAG, "some unknown SIP exception when opening", se);
-            mHandler.post(gui2);
-            return;
-        }
-    }
-
-
-    private SipRegistrationListener mSipListenerRegistration = new SipRegistrationListener() {
-        // NOTE: for some reason i can't put any UI calls in these
-        @Override public void onRegistering(String localProfileUri) {
-            //updateStatus("Registering with SIP Server...");
-            Log.d(TAG, "+++ now registering");
-            mHandler.post(gui3);
-        }
-
-        @Override public void onRegistrationFailed(String localProfileUri, int errorCode, String errorMessage) {
-            //updateStatus("Registration failed.  Please check settings.");
-            Log.d(TAG, "+++ error with registration: " + errorCode + ", " + errorMessage);
-            mHandler.post(gui2);
-        }
-
-        @Override public void onRegistrationDone(String localProfileUri, long expiryTime) {
-            Log.d(TAG, "+++ DONE REGISTERING!");
-            actuallyMakeTheCall();
-        }
-    };
-
-
-
-    private void actuallyMakeTheCall() {
-        Log.d(TAG, "placing call to base station");
-        mRecordProgress.setProgress(60);
-        try {
-            mCall = mSipManager.makeAudioCall(mSipProfile.getUriString(), mRemoteUri, mSipListenerAudioCall, Keys.SIP_TIMEOUT);
-        } catch (SipException se) {
-            Log.d(TAG, "some unknown SIP exception when placing the call", se);
-        }
-    }
-
-    private SipAudioCall.Listener mSipListenerAudioCall = new SipAudioCall.Listener() {
-        @Override public void onCalling(SipAudioCall call) {
-            super.onCalling(call);
-            mHandler.post(gui4);
-        }
-        @Override public void onCallEstablished(SipAudioCall call) {
-            super.onCallEstablished(call);
-            call.startAudio();
-            call.setSpeakerMode(true);
-            //if(!call.isMuted()) {
-                // if not muted, be muted (does this mute the speaker or the mic? unclear)
-                call.toggleMute();
-            //}
-            mVoipTalking = true;
-            mHandler.post(gui1);
-        }
-        @Override public void onCallEnded(SipAudioCall call) {
-            super.onCallEnded(call);
-            call.close();
-            mHandler.post(gui2);
-        }
-        @Override public void onError(SipAudioCall call, int errorCode, String errorMessage) {
-            super.onError(call, errorCode, errorMessage);
-            Log.d(TAG, "+++ error during the call: " + errorCode + ", " + errorMessage);
-            // idea: if an error happens when trying to connect, it probably won't connect
-            // if an error happens when it is already connected, then the buttons and progress bar will already be like this
-            mHandler.post(gui2);
-        }
-    };
-
-    // NOTE: any calls to the gui either do nothing or actually crash when made inside the SipListeners (apparently thats a separate thread? idk)
-    // however putting those gui updates into simple Runnables that immediately run on the main thread will work
-    // so that's why i have these ugly things
-    // NOTE2: the Database callback functions do support UI calls (usually)
-    private Runnable gui1 = new Runnable() {
-        @Override public void run() {
-            mButtVoip.setEnabled(true);
-            mButtVoip.setText(R.string.end_voip_label);
-            mRecordProgress.setProgress(99);
-            // show the image
-            mRecordIndicator.setVisibility(View.VISIBLE);
-        }
-    };
-    private Runnable gui2 = new Runnable() {@Override public void run() { mButtVoip.setEnabled(mIsConnected && mRemoteUri!=null); mRecordProgress.setVisibility(View.INVISIBLE); }};
-    private Runnable gui3 = new Runnable() {@Override public void run() { mRecordProgress.setProgress(40); }};
-    private Runnable gui4 = new Runnable() {@Override public void run() { mRecordProgress.setProgress(70); }};
-
-    protected void actuallyEndTheCall() {
-        // note: this is called in onStop here and onPageChanged of the PagerActivity
-        mVoipTalking = false;
-        mHandler.post(gui2);
-        mButtVoip.setText(R.string.begin_record_label);
-        // hide the image
-        mRecordIndicator.setVisibility(View.INVISIBLE);
-
-        if (mSipManager == null) { return; } // this should never be hit but let's be extra sure
-
-        if (mCall != null) {
-            Log.d(TAG, "closing the sip call object");
-            try {
-                mCall.endCall();
-                mCall = null; // nullify it to be extra sure
-            } catch (SipException se) {
-                Log.d(TAG, "somehow failed to end the call", se);
-            }
-        }
-        if (mSipProfile != null) {
-            Log.d(TAG, "closing the sip profile object");
-            try {
-                mSipManager.close(mSipProfile.getUriString());
-                mSipProfile = null; // nullify it to be extra sure
-            } catch (SipException se) {
-                Log.d(TAG, "Failed to close local profile.", se);
-            }
-        }
-    }
-
-
-    protected ValueEventListener mDBListenerRemoteURI = new ValueEventListener() {
-        @Override public void onDataChange(@NonNull DataSnapshot ds) {
-            String s = ds.getValue(String.class);
-            if(s == null) {
-                Log.d(TAG, "remote uri node doesn't exist for some reason");
-            } else if(s.equals("-")) {
-                Log.d(TAG, "remote uri node exists but hasn't been filled");
-            } else {
-                Log.d(TAG, "successfully got remote uri");
-                mRemoteUri = s;
-                if(mIsConnected) mButtVoip.setEnabled(true);
-            }
-        }
-        @Override public void onCancelled(@NonNull DatabaseError de) {
-            // Failed to read value, not sure how or what to do about it
-            Log.d(TAG, "firebase error: failed to get snapshot??", de.toException());
-        }
-    };
-    */
+//    /*
+//    private View.OnClickListener mOnClickVoip = new View.OnClickListener() {
+//        @Override public void onClick(View v) {
+//            // use the same listener but either start/end call depending on state variables
+//            mButtVoip.setEnabled(false);
+//            if(!mVoipTalking) {
+//                // placing a call:
+//                Log.d(TAG, "starting a call");
+//                attemptToCall();
+//            } else {
+//                // hanging up:
+//                Log.d(TAG, "ending the call");
+//                actuallyEndTheCall();
+//            }
+//        }
+//    };
+//
+//    protected void attemptToCall() {
+//        // called by the PagerActivity on permissions return
+//        // stage 1: check permissions
+//        if(requestPermissionsForVoip()) {
+//            // stage 2: create a profile
+//            createSipProfile();
+//            // stage 3: register the profile (the hard part)
+//            registerSipProfile();
+//            // then goes into listener and the listener asynchronously calls actuallyMakeTheCall() if it actually succeeds
+//        }
+//    }
+//
+//    private boolean requestPermissionsForVoip() {
+//        // return TRUE if it passes, FALSE otherwise
+//        // this is called by voip button click, and its also called by pageractivity
+//        // AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA I HATE PERMISSIONS
+//        if(ContextCompat.checkSelfPermission(getActivity(), Manifest.permission.USE_SIP) != PackageManager.PERMISSION_GRANTED) {
+//            Log.d(TAG + TAG2, "need to request sip permissions");
+//            ActivityCompat.requestPermissions(getActivity(),
+//                    new String[]{Manifest.permission.USE_SIP},
+//                    Keys.PERM_REQ_USE_SIP);
+//        } else {
+//            // if I do somehow have permission, then check the next one
+//            if(ContextCompat.checkSelfPermission(getActivity(), Manifest.permission.INTERNET) != PackageManager.PERMISSION_GRANTED) {
+//                Log.d(TAG, "need to request internet permissions");
+//                ActivityCompat.requestPermissions(getActivity(),
+//                        new String[]{Manifest.permission.INTERNET},
+//                        Keys.PERM_REQ_INTERNET);
+//            } else {
+//                // if I do somehow have permission, then check the next one
+//                if(ContextCompat.checkSelfPermission(getActivity(), Manifest.permission.RECORD_AUDIO) != PackageManager.PERMISSION_GRANTED) {
+//                    Log.d(TAG, "need to request audio permissions");
+//                    ActivityCompat.requestPermissions(getActivity(),
+//                            new String[]{Manifest.permission.RECORD_AUDIO},
+//                            Keys.PERM_REQ_RECORD_AUDIO);
+//                } else {
+//                    // if I do somehow have permission, then check the next one
+//                    if(ContextCompat.checkSelfPermission(getActivity(), Manifest.permission.ACCESS_WIFI_STATE) != PackageManager.PERMISSION_GRANTED) {
+//                        Log.d(TAG, "need to request wifi permissions");
+//                        ActivityCompat.requestPermissions(getActivity(),
+//                                new String[]{Manifest.permission.ACCESS_WIFI_STATE},
+//                                Keys.PERM_REQ_ACCESS_WIFI_STATE);
+//                    } else {
+//                        // if I do somehow have permission, then check the next one
+//                        if(ContextCompat.checkSelfPermission(getActivity(), Manifest.permission.WAKE_LOCK) != PackageManager.PERMISSION_GRANTED) {
+//                            Log.d(TAG, "need to request wake permissions");
+//                            ActivityCompat.requestPermissions(getActivity(),
+//                                    new String[]{Manifest.permission.WAKE_LOCK},
+//                                    Keys.PERM_REQ_WAKE_LOCK);
+//                        } else {
+//                            // if I do somehow have permission, then check the next one
+//                            if(ContextCompat.checkSelfPermission(getActivity(), Manifest.permission.MODIFY_AUDIO_SETTINGS) != PackageManager.PERMISSION_GRANTED) {
+//                                Log.d(TAG, "need to request modify_audio permissions");
+//                                ActivityCompat.requestPermissions(getActivity(),
+//                                        new String[]{Manifest.permission.MODIFY_AUDIO_SETTINGS},
+//                                        Keys.PERM_REQ_MODIFY_AUDIO_SETTINGS);
+//                            } else {
+//                                // SUCCESS
+//                                // I OFFICIALLY HAVE ALL THE PERMISSIONS I MIGHT POSSIBLY NEED
+//                                // FINALLY I CAN DO THE THING
+//                                return true;
+//                            }
+//                        }
+//                    }
+//                }
+//            }
+//        }
+//        return false;
+//    }
+//
+//
+//    private void createSipProfile() {
+//        mRecordProgress.setVisibility(View.VISIBLE);
+//        mRecordProgress.setProgress(20);
+//
+//        Log.d(TAG, "CAN WE DO IT " + SipManager.isApiSupported(getContext()) + " AND " + SipManager.isVoipSupported(getContext()));
+//
+//        // stage 1: build the profile
+//        SipProfile.Builder builder;
+//        try {
+//            builder = new SipProfile.Builder(Keys.SIP_APP_USERNAME, Keys.SIP_DOMAIN);
+//        } catch (ParseException pe) {
+//            Log.d(TAG, "failed to parse the username and domain", pe);
+//            mHandler.post(gui2);
+//            return;
+//        }
+//        builder.setPassword(Keys.SIP_APP_PASSWORD);
+//        mSipProfile = builder.build();
+//
+//        Log.d(TAG, "my uri = " + mSipProfile.getUriString());
+//    }
+//
+//    private void registerSipProfile() {
+//        // stage 2: register the profile
+//        // stage 2.5: actually do the thing AFTER the listener is set up
+//        // stage 3: wait for registration result
+//        mRecordProgress.setProgress(30);
+//        Log.d(TAG, "beginning registration");
+//        try {
+//            // this is open for send only
+//            mSipManager.open(mSipProfile);
+//            Log.d(TAG, "am i opened? " + mSipManager.isOpened(mSipProfile.getUriString()));
+//            if(!mSipManager.isRegistered(mSipProfile.getUriString())) {
+//                mSipManager.register(mSipProfile, Keys.SIP_TIMEOUT, mSipListenerRegistration);
+//            } else {
+//                Log.d(TAG, "already registered??? gonna just go on, see what happens");
+//                actuallyMakeTheCall();
+//            }
+//            //mSipManager.setRegistrationListener(mSipProfile.getUriString(), mSipListenerRegistration);
+//        } catch (SipException se) {
+//            Log.d(TAG, "some unknown SIP exception when opening", se);
+//            mHandler.post(gui2);
+//            return;
+//        }
+//    }
+//
+//
+//    private SipRegistrationListener mSipListenerRegistration = new SipRegistrationListener() {
+//        // NOTE: for some reason i can't put any UI calls in these
+//        @Override public void onRegistering(String localProfileUri) {
+//            //updateStatus("Registering with SIP Server...");
+//            Log.d(TAG, "+++ now registering");
+//            mHandler.post(gui3);
+//        }
+//
+//        @Override public void onRegistrationFailed(String localProfileUri, int errorCode, String errorMessage) {
+//            //updateStatus("Registration failed.  Please check settings.");
+//            Log.d(TAG, "+++ error with registration: " + errorCode + ", " + errorMessage);
+//            mHandler.post(gui2);
+//        }
+//
+//        @Override public void onRegistrationDone(String localProfileUri, long expiryTime) {
+//            Log.d(TAG, "+++ DONE REGISTERING!");
+//            actuallyMakeTheCall();
+//        }
+//    };
+//
+//
+//
+//    private void actuallyMakeTheCall() {
+//        Log.d(TAG, "placing call to base station");
+//        mRecordProgress.setProgress(60);
+//        try {
+//            mCall = mSipManager.makeAudioCall(mSipProfile.getUriString(), mRemoteUri, mSipListenerAudioCall, Keys.SIP_TIMEOUT);
+//        } catch (SipException se) {
+//            Log.d(TAG, "some unknown SIP exception when placing the call", se);
+//        }
+//    }
+//
+//    private SipAudioCall.Listener mSipListenerAudioCall = new SipAudioCall.Listener() {
+//        @Override public void onCalling(SipAudioCall call) {
+//            super.onCalling(call);
+//            mHandler.post(gui4);
+//        }
+//        @Override public void onCallEstablished(SipAudioCall call) {
+//            super.onCallEstablished(call);
+//            call.startAudio();
+//            call.setSpeakerMode(true);
+//            //if(!call.isMuted()) {
+//                // if not muted, be muted (does this mute the speaker or the mic? unclear)
+//                call.toggleMute();
+//            //}
+//            mVoipTalking = true;
+//            mHandler.post(gui1);
+//        }
+//        @Override public void onCallEnded(SipAudioCall call) {
+//            super.onCallEnded(call);
+//            call.close();
+//            mHandler.post(gui2);
+//        }
+//        @Override public void onError(SipAudioCall call, int errorCode, String errorMessage) {
+//            super.onError(call, errorCode, errorMessage);
+//            Log.d(TAG, "+++ error during the call: " + errorCode + ", " + errorMessage);
+//            // idea: if an error happens when trying to connect, it probably won't connect
+//            // if an error happens when it is already connected, then the buttons and progress bar will already be like this
+//            mHandler.post(gui2);
+//        }
+//    };
+//
+//    // NOTE: any calls to the gui either do nothing or actually crash when made inside the SipListeners (apparently thats a separate thread? idk)
+//    // however putting those gui updates into simple Runnables that immediately run on the main thread will work
+//    // so that's why i have these ugly things
+//    // NOTE2: the Database callback functions do support UI calls (usually)
+//    private Runnable gui1 = new Runnable() {
+//        @Override public void run() {
+//            mButtVoip.setEnabled(true);
+//            mButtVoip.setText(R.string.end_voip_label);
+//            mRecordProgress.setProgress(99);
+//            // show the image
+//            mRecordIndicator.setVisibility(View.VISIBLE);
+//        }
+//    };
+//    private Runnable gui2 = new Runnable() {@Override public void run() { mButtVoip.setEnabled(mIsConnected && mRemoteUri!=null); mRecordProgress.setVisibility(View.INVISIBLE); }};
+//    private Runnable gui3 = new Runnable() {@Override public void run() { mRecordProgress.setProgress(40); }};
+//    private Runnable gui4 = new Runnable() {@Override public void run() { mRecordProgress.setProgress(70); }};
+//
+//    protected void actuallyEndTheCall() {
+//        // note: this is called in onStop here and onPageChanged of the PagerActivity
+//        mVoipTalking = false;
+//        mHandler.post(gui2);
+//        mButtVoip.setText(R.string.begin_record_label);
+//        // hide the image
+//        mRecordIndicator.setVisibility(View.INVISIBLE);
+//
+//        if (mSipManager == null) { return; } // this should never be hit but let's be extra sure
+//
+//        if (mCall != null) {
+//            Log.d(TAG, "closing the sip call object");
+//            try {
+//                mCall.endCall();
+//                mCall = null; // nullify it to be extra sure
+//            } catch (SipException se) {
+//                Log.d(TAG, "somehow failed to end the call", se);
+//            }
+//        }
+//        if (mSipProfile != null) {
+//            Log.d(TAG, "closing the sip profile object");
+//            try {
+//                mSipManager.close(mSipProfile.getUriString());
+//                mSipProfile = null; // nullify it to be extra sure
+//            } catch (SipException se) {
+//                Log.d(TAG, "Failed to close local profile.", se);
+//            }
+//        }
+//    }
+//
+//
+//    protected ValueEventListener mDBListenerRemoteURI = new ValueEventListener() {
+//        @Override public void onDataChange(@NonNull DataSnapshot ds) {
+//            String s = ds.getValue(String.class);
+//            if(s == null) {
+//                Log.d(TAG, "remote uri node doesn't exist for some reason");
+//            } else if(s.equals("-")) {
+//                Log.d(TAG, "remote uri node exists but hasn't been filled");
+//            } else {
+//                Log.d(TAG, "successfully got remote uri");
+//                mRemoteUri = s;
+//                if(mIsConnected) mButtVoip.setEnabled(true);
+//            }
+//        }
+//        @Override public void onCancelled(@NonNull DatabaseError de) {
+//            // Failed to read value, not sure how or what to do about it
+//            Log.d(TAG, "firebase error: failed to get snapshot??", de.toException());
+//        }
+//    };
+//    */
 
     // ===========================================================================================================
     // photo stuff
