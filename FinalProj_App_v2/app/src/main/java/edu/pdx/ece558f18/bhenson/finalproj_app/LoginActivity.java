@@ -152,7 +152,7 @@ public class LoginActivity extends AppCompatActivity {
                 if (task.isSuccessful()) {
                     //mProgressBar.setProgress(50);
                     mHandler.post(gui50);
-                    // Sign in success, update UI with the signed-in user's information
+                    // Sign in success
                     Log.d(TAG, "signInWithEmail:success");
                     Log.d(TAG, "UUID = " + mAuth.getCurrentUser().getUid());
 

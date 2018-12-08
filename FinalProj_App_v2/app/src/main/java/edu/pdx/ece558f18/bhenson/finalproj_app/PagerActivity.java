@@ -285,7 +285,6 @@ public class PagerActivity extends AppCompatActivity
 
         // this simply kills the pageractivity and launches the login activity
         Intent next = new Intent(PagerActivity.this, LoginActivity.class);
-        // add some extras?
         startActivity(next);
         finish();
         return;

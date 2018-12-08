@@ -99,13 +99,6 @@ public class ControlFragment extends Fragment {
         // whoami text
         whoami.setText(getString(R.string.whoami_label, Keys.stripEmailSuffix(mAuth.getCurrentUser().getEmail())) );
 
-        // numberpicker
-//        // TODO: numberpicker is really hard to work with (how do i reverse the order? how do I resize the center bit????) so consider replacing with a spinner or direct input
-//        // TODO: specify the values that are displayd (1/2/3/5/10/15/20, perhaps?)
-//        mNumberPicker.setMaxValue(100);
-//        mNumberPicker.setMinValue(0);
-//        mNumberPicker.setWrapSelectorWheel(false);
-
         // autologin initial value, from sharedprefs
         SharedPreferences prefs = getContext().getSharedPreferences(Keys.FILE_PREFS, Context.MODE_PRIVATE);
         mCheckBox.setChecked(prefs.getBoolean(Keys.KEY_AUTOLOGIN, Keys.DEFAULT_AUTOLOGIN));
@@ -116,8 +109,6 @@ public class ControlFragment extends Fragment {
         mCheckBox.setOnClickListener(mOnClickAutologinCheckbox);
         mLogout.setOnClickListener(mOnClickLogout);
         mToggle.setOnClickListener(mOnClickToggleArmed);
-        // TODO
-        // timout select
 
         return v;
     }
@@ -154,29 +145,6 @@ public class ControlFragment extends Fragment {
             Log.d(TAG, "firebase error: failed to get snapshot??", de.toException());
         }
     };
-
-//    protected ValueEventListener mDBListenerTimeout = new ValueEventListener() {
-//        @Override public void onDataChange(@NonNull DataSnapshot ds) {
-//            Log.d(TAG, "got the initial values");
-//            try {
-//                //mToggle.setChecked(ds.child(Keys.DB_ARMED).getValue(Boolean.class));
-//                int fromdb = ds.child(Keys.DB_TIMEOUT).getValue(Integer.class);
-//                // TODO: convert # of seconds back into index
-//                mNumberPicker.setValue(2);
-//
-//            } catch (NullPointerException npe) {
-//                Log.d(TAG, "error: bad data when getting initial values", npe);
-//                return;
-//            } catch(DatabaseException de) {
-//                Log.d(TAG, "error: something bad", de);
-//                return;
-//            }
-//        }
-//        @Override public void onCancelled(@NonNull DatabaseError de) {
-//            // Failed to read value, not sure how or what to do about it
-//            Log.d(TAG, "firebase error: failed to get snapshot??", de.toException());
-//        }
-//    };
 
 
     private View.OnClickListener mOnClickToggleArmed = new View.OnClickListener() {
