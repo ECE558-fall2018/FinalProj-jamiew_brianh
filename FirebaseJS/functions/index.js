@@ -2,6 +2,11 @@
  *  Jamie Williams - Updated 12/1/2018
  *	Security App - ECE 558 Final Project, Fall 2018
  *
+ *  Brian Henson - Updated 12/22/2018
+ *  modify firebase functions: the disconnect message REQUIRES Armed=true
+ *  modify firebase functions: the Triggered message does NOT require Armed=true
+ *  modify firebase functions: the Triggered message does NOT set Armed=false
+ *
  * Functions to alert a user if base station detects an issue or stops sending timestamps
  * 		-Node.js code to create functions in Firebase to track Real Time Database values
  *		-Alerts the user using a Firebase Cloud Messaging notification to phone
@@ -30,6 +35,18 @@ exports.checkBaseStationConnected = functions.database.ref('users/{userUid}/pi_c
 	if(prevState && !currentState) {
 		console.log('Pi disconnected for user: ', userUid, '. Prev State: ', prevState , ', Current State: ', currentState);
 		// Send notification to user on disconnect
+		
+		// BH: if armed=false, abort early & don't send a notification
+		// Get the value of alarm_armed boolean
+		const armedRef = admin.database().ref(`/users/${userUid}/pi_armed`);
+		var armedVal;
+		const snapshot = await armedRef.once('value', (snap) => {
+			armedVal = snap.val();
+		});
+		const armed = armedVal;
+		if(!armed) {
+			return null;
+		}
 		
 		// Retrieve notification token - unique to device to send to
 		const tokenRef = admin.database().ref(`/users/${userUid}/apptoken`);
@@ -87,6 +104,8 @@ exports.checkStationAlarm = functions.database.ref('/users/{userUid}/pi_triggere
 	// Create get user ID of the user whose system triggered
 	const userUid = context.params.userUid;
 	
+	// BH: keep the Functions as minimal as possible, let the Pi determine whether the alarm is valid
+	/*
 	// Get the value of alarm_armed boolean
 	const armedRef = admin.database().ref(`/users/${userUid}/pi_armed`);
 	var armedVal;
@@ -94,26 +113,33 @@ exports.checkStationAlarm = functions.database.ref('/users/{userUid}/pi_triggere
 		armedVal = snap.val();
 	});
 	const armed = armedVal;
+	*/
+	
 	// Get the value of pi_triggered boolean
 	const alarmed = change.after.val();
 	const triggerRef = admin.database().ref(`/users/${userUid}/pi_triggered`);
 	
 	// Check if there is an alarm, and if the alarm is armed
-	if (!alarmed || !armed) {
+	// BH: keep the Functions as minimal as possible, let the Pi determine whether the alarm is valid
+	// if the triggered value changed to FALSE then it was changed by this function; ignore it & do nothing
+	if (!alarmed) {
+		/*
 		// No alarm, or not armed, console write to log the change
 		console.log('Noted write to pi_triggered, no alarm activated for user: ', userUid, '. Armed is: ', armed , ', Alarmed is', alarmed);
 		if(alarmed && !armed) {
 		// If trigger when not alarmed, turn off trigger
 		triggerRef.set(false);	
 		}		
+		*/
 		return null;
 	}
 	// Alarm is triggered while armed, write status to console
-	console.log('Noted activation pi_triggered, for user: ', userUid, '. Armed is: ', armed , ', Alarmed is', alarmed);
+	console.log('Noted activation pi_triggered, for user: ', userUid);
 	
 	// Reset pi_triggered value and armed value
 	triggerRef.set(false);
-	armedRef.set(false);
+	// BH: I want the MOUSETRAP behavior to be controlled only in the Pi... keep functions as minimal as possible
+	//armedRef.set(false);
 	
 	// Retrieve notification token - unique to device to send to
 	const tokenRef = admin.database().ref(`/users/${userUid}/apptoken`);
